@@ -136,7 +136,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
         onDragEnd={handleDragEnd}
         className="fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
           bg-[#eeecea] md:bg-white rounded-t-[28px] md:rounded-[28px]
-          max-h-[92vh] md:max-h-[82vh] h-[92vh] md:h-auto
+          max-h-[92svh] md:max-h-[82vh] h-[92svh] md:h-auto
           w-full md:w-[840px]
           md:-translate-x-1/2 md:-translate-y-1/2
           shadow-[0_-6px_40px_rgba(0,0,0,0.08)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)]

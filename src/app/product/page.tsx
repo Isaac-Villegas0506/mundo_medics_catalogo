@@ -104,19 +104,18 @@ function ProductDetailContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f8f6]">
-        <div className="w-8 h-8 border-4 border-[#1a1a1a] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[#f8f8f6]">
+        <div className="w-8 h-8 border-4 border-[#1a1a1a]/20 border-t-[#1a1a1a] rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f8f6] text-[#1a1a1a]">
-        <h1 className="text-2xl font-bold mb-4">Producto no encontrado</h1>
-        <Link href="/" className="text-sm font-semibold hover:underline">
-          Volver al catálogo
-        </Link>
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#f8f8f6] px-5 text-center">
+        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">Producto no encontrado</h1>
+        <p className="text-[#888] mb-6">El producto que buscas ya no existe o fue ocultado.</p>
+        <Link href="/" className="px-6 py-3 bg-[#1a1a1a] text-white rounded-xl font-semibold">Volver al catálogo</Link>
       </div>
     );
   }
@@ -125,7 +124,7 @@ function ProductDetailContent() {
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola,%20quisiera%20consultar%20sobre%20el%20producto:%20${encodeURIComponent(product.name)}%20en%20color%20${encodeURIComponent(product.color_name)}`;
 
   return (
-    <div className="bg-[#f8f8f6] text-[#1a1a1a] font-sans antialiased min-h-screen flex flex-col md:flex-row">
+    <div className="min-h-[100dvh] bg-white flex flex-col md:flex-row relative">
 
       {/* Mobile Header */}
       <header className="absolute top-0 w-full z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/20 to-transparent md:hidden">
@@ -146,7 +145,7 @@ function ProductDetailContent() {
       </Link>
 
       {/* Left: Image — full height on desktop, fixed */}
-      <div className="w-full md:w-1/2 md:fixed md:top-0 md:bottom-0 md:left-0 bg-[#eeecea] relative aspect-[4/5] md:aspect-auto md:h-screen flex items-center justify-center">
+      <div className="w-full md:w-1/2 md:fixed md:top-0 md:bottom-0 md:left-0 bg-[#eeecea] relative aspect-[4/5] md:aspect-auto md:h-[100dvh] flex items-center justify-center">
         {allImages.length > 0 ? (
           <motion.img
             initial={{ opacity: 0, scale: 0.95 }}
@@ -166,7 +165,7 @@ function ProductDetailContent() {
             <div className="absolute inset-y-0 left-3 flex items-center">
               <button 
                 onClick={() => setCurrentImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)}
-                className="w-8 h-8 rounded-full bg-white/30 backdrop-blur flex items-center justify-center text-white hover:bg-white/50 active:scale-90 transition-all"
+                className="w-8 h-8 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_left</span>
               </button>
@@ -174,7 +173,7 @@ function ProductDetailContent() {
             <div className="absolute inset-y-0 right-3 flex items-center">
               <button 
                 onClick={() => setCurrentImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)}
-                className="w-8 h-8 rounded-full bg-white/30 backdrop-blur flex items-center justify-center text-white hover:bg-white/50 active:scale-90 transition-all"
+                className="w-8 h-8 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_right</span>
               </button>
@@ -183,7 +182,7 @@ function ProductDetailContent() {
               {allImages.map((_, idx) => (
                 <div 
                   key={idx} 
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-white' : 'bg-white/40'}`} 
+                  className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-[#1a1a1a]' : 'bg-black/20'}`} 
                 />
               ))}
             </div>
@@ -191,8 +190,8 @@ function ProductDetailContent() {
         )}
       </div>
 
-      {/* Right: Content */}
-      <div className="w-full md:w-1/2 md:ml-auto relative -mt-7 md:mt-0 bg-white rounded-t-[28px] md:rounded-none px-6 md:px-12 lg:px-16 pt-8 md:pt-20 pb-32 md:pb-16 md:min-h-screen z-10 flex flex-col">
+      {/* Right: Content — scrollable */}
+      <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col min-h-[100dvh] bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-32">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

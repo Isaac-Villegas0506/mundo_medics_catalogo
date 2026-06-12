@@ -94,15 +94,37 @@ export default function ProductEditorPage() {
     handleChange('tags', newTags);
   };
 
-  // Cloudinary Upload
+  // Image Upload via Supabase Storage
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Simulate upload with local object URL for preview
-    // In production, upload to Cloudinary using an Unsigned Upload Preset
-    const newUrls = Array.from(files).map(file => URL.createObjectURL(file));
-    handleChange('gallery', [...formData.gallery, ...newUrls]);
+    setSaving(true);
+    const uploadedUrls = [];
+
+    for (const file of Array.from(files)) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('products')
+        .upload(fileName, file);
+
+      if (error) {
+        console.error('Error uploading:', error);
+        alert('Error al subir la imagen. Verifica que creaste el bucket en Supabase.');
+      } else if (data) {
+        const { data: publicData } = supabase.storage
+          .from('products')
+          .getPublicUrl(fileName);
+        uploadedUrls.push(publicData.publicUrl);
+      }
+    }
+
+    setSaving(false);
+    if (uploadedUrls.length > 0) {
+      handleChange('gallery', [...formData.gallery, ...uploadedUrls]);
+    }
   };
 
   const handleSave = async () => {
@@ -374,7 +396,7 @@ export default function ProductEditorPage() {
               <h3 className="font-semibold text-[#555] text-sm">Auditoría</h3>
             </div>
             <p className="text-[11px] text-[#888] leading-relaxed">
-              Los cambios se guardarán en la base de datos central. Las imágenes en esta versión se subirán usando Cloudinary (simulado con blob local para esta previsualización rápida).
+              Los cambios se guardarán en la base de datos central. Las imágenes se subirán y alojarán en Supabase Storage (Bucket "products").
             </p>
           </div>
         </div>
