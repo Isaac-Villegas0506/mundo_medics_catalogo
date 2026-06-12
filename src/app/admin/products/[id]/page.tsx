@@ -1,0 +1,385 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { motion, Reorder } from 'motion/react';
+import { supabase } from '@/utils/supabase/client';
+import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
+
+export default function ProductEditorPage() {
+  const router = useRouter();
+  const params = useParams();
+  const isNew = params.id === 'new';
+  
+  const [loading, setLoading] = useState(!isNew);
+  const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    internal_code: '',
+    description: '',
+    category: '',
+    status: 'Disponible',
+    action_text: 'Consultar',
+    sizes: ['S', 'M', 'L', 'XL'],
+    color_name: '',
+    color_hex_codes: [] as string[],
+    tags: [] as string[],
+    gallery: [] as string[],
+    image_url: '', // Main image, usually gallery[0]
+  });
+
+  const [newColorHex, setNewColorHex] = useState('#000000');
+  const [newTag, setNewTag] = useState('');
+
+  useEffect(() => {
+    fetchCategories();
+    if (!isNew) {
+      fetchProduct();
+    }
+  }, [params.id]);
+
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').order('order_index');
+    if (data) setCategories(data);
+  };
+
+  const fetchProduct = async () => {
+    const { data, error } = await supabase.from('products').select('*').eq('id', params.id).single();
+    if (data) {
+      setFormData({
+        name: data.name || '',
+        internal_code: data.internal_code || '',
+        description: data.description || '',
+        category: data.category || '',
+        status: data.status || 'Disponible',
+        action_text: data.action_text || 'Consultar',
+        sizes: data.sizes || [],
+        color_name: data.color_name || '',
+        color_hex_codes: data.color_hex_codes || [],
+        tags: data.tags || [],
+        gallery: data.gallery || (data.image_url ? [data.image_url] : []),
+        image_url: data.image_url || '',
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleSize = (size: string) => {
+    const newSizes = formData.sizes.includes(size) 
+      ? formData.sizes.filter(s => s !== size)
+      : [...formData.sizes, size];
+    handleChange('sizes', newSizes);
+  };
+
+  const addColor = () => {
+    if (!formData.color_hex_codes.includes(newColorHex)) {
+      handleChange('color_hex_codes', [...formData.color_hex_codes, newColorHex]);
+    }
+  };
+
+  const removeColor = (hex: string) => {
+    handleChange('color_hex_codes', formData.color_hex_codes.filter(c => c !== hex));
+  };
+
+  const toggleTag = (tag: string) => {
+    const newTags = formData.tags.includes(tag) 
+      ? formData.tags.filter(t => t !== tag)
+      : [...formData.tags, tag];
+    handleChange('tags', newTags);
+  };
+
+  // Cloudinary Upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Simulate upload with local object URL for preview
+    // In production, upload to Cloudinary using an Unsigned Upload Preset
+    const newUrls = Array.from(files).map(file => URL.createObjectURL(file));
+    handleChange('gallery', [...formData.gallery, ...newUrls]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const payload = {
+      ...formData,
+      image_url: formData.gallery.length > 0 ? formData.gallery[0] : null,
+    };
+
+    if (isNew) {
+      await supabase.from('products').insert([payload]);
+    } else {
+      await supabase.from('products').update(payload).eq('id', params.id);
+    }
+    setSaving(false);
+    router.push('/admin/products');
+  };
+
+  if (loading) return <div className="p-10 text-center">Cargando producto...</div>;
+
+  const availableTags = ['Nuevo', 'Tendencia', 'Oferta', 'Destacado'];
+  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Única'];
+
+  return (
+    <main className="flex-1 p-4 md:p-8 w-full max-w-4xl mx-auto flex flex-col gap-6 pb-[100px] md:pb-8">
+      
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 bg-white/50 backdrop-blur-md p-4 rounded-3xl sticky top-[80px] z-30 shadow-sm border border-black/5">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/products" className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-[#ece9e2] text-[#555] hover:text-[#1a1a1a] transition-all">
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>arrow_back</span>
+          </Link>
+          <div>
+            <h2 className="text-[20px] font-semibold tracking-tight text-[#1a1a1a]">
+              {isNew ? 'Nuevo Producto' : 'Editar Producto'}
+            </h2>
+            <span className="text-[11px] text-[#aaa] uppercase tracking-wider">{formData.internal_code || 'Borrador'}</span>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Link href="/admin/products" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[#555] hover:bg-white transition-colors">
+            Cancelar
+          </Link>
+          <button 
+            onClick={handleSave} 
+            disabled={saving}
+            className="bg-[#1a1a1a] text-white font-semibold text-sm px-6 py-2.5 rounded-xl hover:bg-[#333] transition-colors shadow-md disabled:opacity-50"
+          >
+            {saving ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Left Column: Basic Info */}
+        <div className="md:col-span-2 flex flex-col gap-6">
+          <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5">
+            <h3 className="font-semibold text-[#1a1a1a] mb-5">Información General</h3>
+            
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-2">Nombre del producto</label>
+                <input 
+                  type="text" 
+                  value={formData.name} 
+                  onChange={e => handleChange('name', e.target.value)}
+                  className="w-full bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-4 py-3 text-sm text-[#1a1a1a] transition-all focus:bg-white"
+                  placeholder="Ej. Bata Premium Elite"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-2">Código Interno (SKU)</label>
+                  <input 
+                    type="text" 
+                    value={formData.internal_code} 
+                    onChange={e => handleChange('internal_code', e.target.value)}
+                    className="w-full bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-4 py-3 text-sm text-[#1a1a1a] transition-all focus:bg-white font-mono"
+                    placeholder="SKU-123"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-2">Categoría</label>
+                  <select 
+                    value={formData.category} 
+                    onChange={e => handleChange('category', e.target.value)}
+                    className="w-full bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-4 py-3 text-sm text-[#1a1a1a] transition-all focus:bg-white appearance-none"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-2">Descripción</label>
+                <textarea 
+                  value={formData.description} 
+                  onChange={e => handleChange('description', e.target.value)}
+                  rows={4}
+                  className="w-full bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-4 py-3 text-sm text-[#1a1a1a] transition-all focus:bg-white resize-none"
+                  placeholder="Describe las características principales..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Media / Gallery */}
+          <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="font-semibold text-[#1a1a1a]">Galería de Imágenes</h3>
+              <label className="cursor-pointer bg-[#f4f2f0] hover:bg-[#eceae6] text-[#555] text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                Subir Fotos
+                <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
+            </div>
+            
+            <Reorder.Group axis="x" values={formData.gallery} onReorder={(val) => handleChange('gallery', val)} className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+              {formData.gallery.map((url, i) => (
+                <Reorder.Item key={url} value={url} className="w-28 h-28 flex-shrink-0 bg-[#f4f2f0] rounded-2xl overflow-hidden relative group cursor-grab active:cursor-grabbing border border-black/5">
+                  <img src={url} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
+                    <span className="material-symbols-outlined text-white text-[20px]">drag_indicator</span>
+                    <button 
+                      onClick={() => handleChange('gallery', formData.gallery.filter(u => u !== url))}
+                      className="w-7 h-7 flex items-center justify-center bg-red-500/80 rounded-full text-white hover:bg-red-500 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  </div>
+                  {i === 0 && (
+                    <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-md px-2 py-0.5 rounded-md text-[9px] font-bold tracking-widest uppercase shadow-sm">
+                      Principal
+                    </div>
+                  )}
+                </Reorder.Item>
+              ))}
+              <label className="w-28 h-28 flex-shrink-0 bg-[#f8f8f6] border-2 border-dashed border-[#ece9e2] rounded-2xl flex flex-col items-center justify-center text-[#aaa] hover:bg-[#f4f2f0] hover:border-[#ccc] transition-all cursor-pointer">
+                <span className="material-symbols-outlined text-[24px] mb-1" style={{ fontVariationSettings: "'wght' 300" }}>add_photo_alternate</span>
+                <span className="text-[10px] font-medium">Añadir</span>
+                <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
+            </Reorder.Group>
+          </div>
+
+          {/* Variants */}
+          <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5">
+            <h3 className="font-semibold text-[#1a1a1a] mb-5">Variantes</h3>
+            
+            <div className="flex flex-col gap-6">
+              {/* Sizes */}
+              <div>
+                <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-3">Tallas Disponibles</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableSizes.map(size => {
+                    const active = formData.sizes.includes(size);
+                    return (
+                      <button 
+                        key={size}
+                        onClick={() => toggleSize(size)}
+                        className={`w-12 h-10 rounded-xl text-sm font-semibold transition-all ${
+                          active ? 'bg-[#1a1a1a] text-white shadow-sm' : 'bg-[#f4f2f0] text-[#555] hover:bg-[#eceae6]'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div>
+                <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-3">Colores y Familia</label>
+                <input 
+                  type="text" 
+                  value={formData.color_name} 
+                  onChange={e => handleChange('color_name', e.target.value)}
+                  className="w-full bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-4 py-3 text-sm text-[#1a1a1a] transition-all focus:bg-white mb-3"
+                  placeholder="Ej. Blanco Nieve o Pack Mixto"
+                />
+                
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-2">
+                    {formData.color_hex_codes.map((hex, i) => (
+                      <div key={i} className="relative group">
+                        <div 
+                          className="w-10 h-10 rounded-full border border-black/10 shadow-sm flex items-center justify-center cursor-pointer"
+                          style={{ background: hex }}
+                        />
+                        <button 
+                          onClick={() => removeColor(hex)}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-black text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <span className="material-symbols-outlined text-[10px]">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 pl-3 border-l border-[#ece9e2]">
+                    <input 
+                      type="color" 
+                      value={newColorHex} 
+                      onChange={e => setNewColorHex(e.target.value)}
+                      className="w-10 h-10 rounded-full border-none outline-none cursor-pointer p-0 bg-transparent"
+                    />
+                    <button onClick={addColor} className="text-sm font-medium text-[#555] bg-[#f4f2f0] hover:bg-[#eceae6] px-3 py-2 rounded-xl transition-colors">
+                      Añadir Color
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Settings */}
+        <div className="flex flex-col gap-6">
+          <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5">
+            <h3 className="font-semibold text-[#1a1a1a] mb-5">Estado</h3>
+            <div className="flex flex-col gap-2">
+              {['Disponible', 'Agotado', 'Próximamente', 'Oculto'].map(s => (
+                <label key={s} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#f8f8f6] cursor-pointer transition-colors border border-transparent hover:border-black/5">
+                  <input 
+                    type="radio" 
+                    name="status" 
+                    value={s}
+                    checked={formData.status === s}
+                    onChange={() => handleChange('status', s)}
+                    className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                  />
+                  <span className="text-sm font-medium text-[#1a1a1a]">{s}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5">
+            <h3 className="font-semibold text-[#1a1a1a] mb-5">Etiquetas (Badges)</h3>
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map(tag => {
+                const active = formData.tags.includes(tag);
+                return (
+                  <button 
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                      active 
+                      ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' 
+                      : 'bg-white text-[#555] border-[#e0e0e0] hover:bg-[#f8f8f6]'
+                    }`}
+                  >
+                    {active && <span className="material-symbols-outlined text-[12px] mr-1 align-middle" style={{ fontVariationSettings: "'wght' 600" }}>check</span>}
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-[#f8f8f6] to-[#f4f2f0] rounded-[24px] p-6 border border-[#ece9e2]">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-[#aaa] text-[20px]">info</span>
+              <h3 className="font-semibold text-[#555] text-sm">Auditoría</h3>
+            </div>
+            <p className="text-[11px] text-[#888] leading-relaxed">
+              Los cambios se guardarán en la base de datos central. Las imágenes en esta versión se subirán usando Cloudinary (simulado con blob local para esta previsualización rápida).
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  );
+}
