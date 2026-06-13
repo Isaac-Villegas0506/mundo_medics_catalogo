@@ -33,6 +33,7 @@ function ProductDetailContent() {
   const [selectedColorIndex, setSelectedColorIndex] = useState<number>(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
@@ -127,13 +128,24 @@ function ProductDetailContent() {
     <div className="min-h-[100dvh] bg-white flex flex-col md:flex-row relative">
 
       {/* Mobile Header */}
-      <header className="absolute top-0 w-full z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/20 to-transparent md:hidden">
-        <Link
+      <header className="absolute top-0 w-full z-40 flex items-center justify-between p-4 bg-gradient-to-b from-black/20 to-transparent md:hidden">
+        <Link 
           href="/"
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/25 backdrop-blur-md text-white active:scale-90 transition-transform"
+          className="w-10 h-10 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#1a1a1a] shadow-sm active:scale-95 transition-all"
         >
-          <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'wght' 300" }}>arrow_back</span>
+          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>arrow_back</span>
         </Link>
+        <button 
+          onClick={toggleFavorite}
+          className="w-10 h-10 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#1a1a1a] shadow-sm active:scale-95 transition-all"
+        >
+          <span 
+            className={`material-symbols-outlined text-[20px] ${isFavorite ? 'text-[#e57373]' : ''}`} 
+            style={{ fontVariationSettings: isFavorite ? "'FILL' 1, 'wght' 300" : "'FILL' 0, 'wght' 300" }}
+          >
+            favorite
+          </span>
+        </button>
       </header>
 
       {/* Desktop Back */}
@@ -191,31 +203,19 @@ function ProductDetailContent() {
       </div>
 
       {/* Right: Content — scrollable */}
-      <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col min-h-[100dvh] bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-32">
+      <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-24 md:pb-32">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="w-full max-w-[480px] mx-auto md:mx-0 flex-1"
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="w-full max-w-[480px] mx-auto md:mx-0"
         >
 
           {/* Title + Favorite */}
-          <div className="flex items-start justify-between mb-3 gap-4">
-            <h1 className="text-[26px] md:text-[36px] font-semibold tracking-tight text-[#1a1a1a] leading-tight">
+          <div className="flex justify-between items-start">
+            <h1 className="text-[28px] md:text-3xl font-semibold tracking-tight leading-none">
               {product.name}
             </h1>
-            <motion.button 
-              whileTap={{ scale: 0.82 }}
-              onClick={toggleFavorite}
-              className="flex-shrink-0 w-10 h-10 mt-0.5 flex items-center justify-center bg-[#f4f2f0] hover:bg-[#eceae6] rounded-full text-[#555] hover:text-[#e57373] transition-colors"
-            >
-              <span 
-                className={`material-symbols-outlined text-[20px] ${isFavorite ? 'text-[#e57373]' : ''}`} 
-                style={{ fontVariationSettings: isFavorite ? "'FILL' 1, 'wght' 300" : "'FILL' 0, 'wght' 300" }}
-              >
-                favorite
-              </span>
-            </motion.button>
           </div>
 
           {/* Description */}
@@ -249,8 +249,27 @@ function ProductDetailContent() {
             <div className="mb-7">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-[11px] font-semibold text-[#aaa] uppercase tracking-widest">Talla</span>
-                <a href="#" className="text-xs text-[#888] hover:text-[#1a1a1a] underline underline-offset-2 font-medium transition-colors">Guía de tallas</a>
+                <button 
+                  onClick={() => setShowSizeGuide(!showSizeGuide)}
+                  className="text-xs text-[#888] hover:text-[#1a1a1a] underline underline-offset-2 font-medium transition-colors"
+                >
+                  {showSizeGuide ? 'Ocultar guía' : 'Guía de tallas'}
+                </button>
               </div>
+              
+              <AnimatePresence>
+                {showSizeGuide && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden mb-5"
+                  >
+                    <img src="/medidas.svg" alt="Guía de Tallas" className="w-full h-auto rounded-xl border border-black/5" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="flex gap-2.5 flex-wrap">
                 {product.sizes.map((s) => (
                   <button

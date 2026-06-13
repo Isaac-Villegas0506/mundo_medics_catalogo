@@ -71,33 +71,37 @@ export default function CatalogPage() {
 
   return (
     <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-[80px] min-h-screen font-sans antialiased">
+
+
       {/* Top App Bar */}
       <header className="sticky top-0 w-full z-50 bg-[#f8f8f6]/90 backdrop-blur-xl border-b border-black/5">
-        <div className="flex items-center justify-between px-4 h-14 max-w-[1200px] mx-auto">
-          {/* Menu */}
-          <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5 transition-colors active:scale-95">
-            <span className="material-symbols-outlined text-[24px] text-[#1a1a1a]" style={{ fontVariationSettings: "'wght' 300" }}>menu</span>
-          </button>
+        <div className="flex items-center justify-between px-4 h-14 max-w-[1200px] mx-auto relative">
+          {/* Logo (Left) */}
+          <div className="w-10 flex items-center justify-start">
+            <img src="/logomundomedics.png" alt="Mundo Medics Logo" className="h-8 object-contain" />
+          </div>
 
-          {/* Brand — plain black, no gradient */}
-          <span className="text-[17px] font-semibold tracking-[-0.01em] text-[#1a1a1a] select-none">
+          {/* Brand (Center) */}
+          <span className="text-[17px] font-semibold tracking-[-0.01em] text-[#1a1a1a] select-none absolute left-1/2 -translate-x-1/2">
             Mundo Medics
           </span>
 
-          {/* Search Toggle */}
-          <button
-            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 ${isSearchVisible ? 'bg-black/8' : 'hover:bg-black/5'}`}
-            onClick={() => setIsSearchVisible(v => !v)}
-          >
-            <motion.span
-              animate={{ rotate: isSearchVisible ? 45 : 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="material-symbols-outlined text-[24px] text-[#1a1a1a] block"
-              style={{ fontVariationSettings: "'wght' 300" }}
+          {/* Search Toggle (Right) */}
+          <div className="w-10 flex items-center justify-end">
+            <button
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 ${isSearchVisible ? 'bg-black/8' : 'hover:bg-black/5'}`}
+              onClick={() => setIsSearchVisible(v => !v)}
             >
-              {isSearchVisible ? 'close' : 'search'}
-            </motion.span>
-          </button>
+              <motion.span
+                animate={{ rotate: isSearchVisible ? 45 : 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="material-symbols-outlined text-[24px] text-[#1a1a1a] block"
+                style={{ fontVariationSettings: "'wght' 300" }}
+              >
+                {isSearchVisible ? 'close' : 'search'}
+              </motion.span>
+            </button>
+          </div>
         </div>
 
         {/* Animated Search Bar */}

@@ -67,6 +67,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   const [selectedColorIndex, setSelectedColorIndex] = React.useState<number>(0);
   const [isFavorite, setIsFavorite] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
+  const [showSizeGuide, setShowSizeGuide] = React.useState(false);
 
   // Combine main image and gallery
   const allImages = React.useMemo(() => {
@@ -148,11 +149,11 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       >
         {/* Drag Handle Area (Mobile only) */}
         <div
-          className="absolute top-0 left-0 right-0 h-10 z-50 flex justify-center pt-3 md:hidden"
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-12 z-50 flex justify-center pt-3 md:hidden cursor-grab active:cursor-grabbing"
           onPointerDown={(e) => dragControls.start(e)}
           style={{ touchAction: 'none' }}
         >
-          <div className="w-10 h-1 bg-white/60 shadow-sm rounded-full" />
+          <div className="w-10 h-1.5 bg-[#ccc]/80 shadow-sm rounded-full" />
         </div>
 
         {/* Desktop Close Button */}
@@ -216,19 +217,19 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               )}
 
               {/* Action Buttons Container */}
-              <div className="absolute top-4 right-4 md:top-3 md:right-3 flex gap-2 z-20">
-                <motion.button
-                  whileTap={{ scale: 0.88 }}
+              <div className="absolute top-4 right-4 md:top-3 md:right-3 flex gap-2 z-50">
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={onClose}
-                  className="w-9 h-9 flex md:hidden items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#555] hover:bg-white transition-colors shadow-sm"
+                  className="w-9 h-9 flex md:hidden items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#555] hover:bg-white active:scale-90 transition-all shadow-sm"
                 >
                   <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
-                </motion.button>
+                </button>
 
-                <motion.button
-                  whileTap={{ scale: 0.82 }}
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={toggleFavorite}
-                  className="w-9 h-9 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#555] hover:text-[#e57373] hover:bg-white transition-colors shadow-sm"
+                  className="w-9 h-9 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#555] hover:text-[#e57373] hover:bg-white active:scale-90 transition-all shadow-sm"
                 >
                   <span 
                     className={`material-symbols-outlined text-[20px] ${isFavorite ? 'text-[#e57373]' : ''}`} 
@@ -236,7 +237,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                   >
                     favorite
                   </span>
-                </motion.button>
+                </button>
               </div>
             </div>
           </div>
@@ -284,7 +285,29 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               {/* Size selector */}
               {product.sizes && product.sizes.length > 0 && (
                 <div className="mb-5">
-                  <span className="text-[11px] font-semibold text-[#aaa] uppercase tracking-widest block mb-2.5">Talla</span>
+                  <div className="flex justify-between items-center mb-2.5">
+                    <span className="text-[11px] font-semibold text-[#aaa] uppercase tracking-widest block">Talla</span>
+                    <button 
+                      onClick={() => setShowSizeGuide(!showSizeGuide)}
+                      className="text-xs text-[#888] hover:text-[#1a1a1a] underline underline-offset-2 font-medium transition-colors"
+                    >
+                      {showSizeGuide ? 'Ocultar guía' : 'Guía de tallas'}
+                    </button>
+                  </div>
+                  
+                  <AnimatePresence>
+                    {showSizeGuide && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden mb-4"
+                      >
+                        <img src="/medidas.svg" alt="Guía de Tallas" className="w-full h-auto rounded-xl border border-black/5" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div className="flex gap-2">
                     {product.sizes.map((s) => (
                       <motion.button

@@ -29,18 +29,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <nav className="bg-white h-screen w-[280px] fixed left-0 top-0 hidden md:flex flex-col border-r border-[#ece9e2] shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-50">
         <div className="flex flex-col gap-6 py-8 h-full">
           {/* Header */}
-          <div className="px-6 mb-4 flex items-center gap-4">
-            <div className="w-11 h-11 bg-[#1a1a1a] rounded-xl flex items-center justify-center shadow-md">
-              <span className="material-symbols-outlined text-white text-[22px]" style={{ fontVariationSettings: "'wght' 300" }}>
-                medical_services
-              </span>
-            </div>
-            <div>
-              <h2 className="font-semibold text-[#1a1a1a] text-lg leading-tight tracking-tight">
-                Mundo Medics
-              </h2>
-              <span className="text-[11px] font-semibold tracking-widest text-[#aaa] uppercase">Admin Portal</span>
-            </div>
+          <div className="px-6 mb-4 flex items-center gap-3">
+            <img src="/logomundomedics.png" alt="Mundo Medics Logo" className="h-10 object-contain" />
           </div>
 
           {/* Navigation Links */}
