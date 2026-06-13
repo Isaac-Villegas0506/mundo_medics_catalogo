@@ -33,12 +33,10 @@ export async function generateMetadata(
     };
   }
 
-  const imageUrl = product.image_url
-    ? product.image_url.trim().replace(/}$/, '')
-    : undefined;
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mundo-medics.vercel.app';
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mundo-medics-catalogo.vercel.app').replace(/\/+$/, '');
   const productUrl = `${siteUrl}/product?id=${product.id}`;
+  // Use the /api/og route which generates a proper PNG — WhatsApp doesn't support SVG
+  const ogImageUrl = `${siteUrl}/api/og?id=${product.id}`;
 
   return {
     title: `${product.name} | Mundo Medics`,
@@ -48,16 +46,14 @@ export async function generateMetadata(
       description: product.description || 'Indumentaria médica de calidad',
       url: productUrl,
       siteName: 'Mundo Medics',
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: 800,
-              height: 1000,
-              alt: product.name,
-            },
-          ]
-        : [],
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: product.name,
+        },
+      ],
       locale: 'es_PE',
       type: 'website',
     },
@@ -65,7 +61,7 @@ export async function generateMetadata(
       card: 'summary_large_image',
       title: `${product.name} | Mundo Medics`,
       description: product.description || 'Indumentaria médica de calidad',
-      images: imageUrl ? [imageUrl] : [],
+      images: [ogImageUrl],
     },
   };
 }
