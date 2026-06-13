@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { icon: 'inventory_2', label: 'Productos', href: '/admin/products' },
     { icon: 'category', label: 'Categorías', href: '/admin/categories' },
     { icon: 'star', label: 'Destacados', href: '/admin/featured' },
+    { icon: 'settings', label: 'Ajustes', href: '/admin/settings' },
   ];
 
   return (
@@ -41,11 +42,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={i}
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all ${
-                    active 
-                    ? 'bg-[#1a1a1a] text-white shadow-sm' 
-                    : 'text-[#555] hover:bg-[#f2f2f0] hover:text-[#1a1a1a]'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all ${active
+                      ? 'bg-[#1a1a1a] text-white shadow-sm'
+                      : 'text-[#555] hover:bg-[#f2f2f0] hover:text-[#1a1a1a]'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: active ? "'FILL' 1, 'wght' 300" : "'wght' 300" }}>
                     {item.icon}
@@ -58,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Footer Action */}
           <div className="px-5 mt-auto">
-            <button 
+            <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-[#e57373] hover:bg-red-50 transition-colors"
             >
@@ -70,18 +70,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </nav>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:ml-[280px] flex flex-col w-full relative">
+      <div className="flex-1 md:ml-[280px] flex flex-col w-full min-w-0 relative">
         {/* Top Header */}
         <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-40 border-b border-[#ece9e2]">
           <div className="flex justify-between items-center px-4 md:px-8 h-16 w-full mx-auto">
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="md:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5 transition-colors active:scale-95"
               >
-                <motion.span 
+                <motion.span
                   animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
-                  className="material-symbols-outlined text-[24px] text-[#1a1a1a]" 
+                  className="material-symbols-outlined text-[24px] text-[#1a1a1a]"
                   style={{ fontVariationSettings: "'wght' 300" }}
                 >
                   {isMobileMenuOpen ? 'close' : 'menu'}

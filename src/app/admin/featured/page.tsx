@@ -50,23 +50,18 @@ export default function AdminFeaturedPage() {
     await supabase.from('products').update({ is_featured: false }).neq('id', '00000000-0000-0000-0000-000000000000'); // Hack to update all rows
     
     // Then set the selected ones to featured and update their order
-    const updates = featuredProducts.map((p, index) => ({
-      id: p.id,
-      name: p.name,
-      is_featured: true,
-      order_index: index,
-    }));
-
-    if (updates.length > 0) {
-      await supabase.from('products').upsert(updates);
-    }
+    await Promise.all(
+      featuredProducts.map((p, index) => 
+        supabase.from('products').update({ is_featured: true, order_index: index }).eq('id', p.id)
+      )
+    );
     
     setSaving(false);
     alert('Configuración guardada correctamente.');
   };
 
   return (
-    <main className="flex-1 p-4 md:p-8 w-full max-w-6xl mx-auto flex flex-col gap-6 pb-[100px] md:pb-8">
+    <main className="flex-1 p-4 md:p-8 w-full max-w-6xl self-start flex flex-col gap-6 pb-[100px] md:pb-8">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-5">

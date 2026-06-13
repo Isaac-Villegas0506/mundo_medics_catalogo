@@ -34,8 +34,22 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
 }
 
 function ModalContent({ onClose, product }: { onClose: () => void, product: Product }) {
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890';
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola,%20estoy%20interesado%20en%20el%20producto:%20${encodeURIComponent(product.name)}`;
+  const [whatsappNumber, setWhatsappNumber] = React.useState(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { supabase } = await import('@/utils/supabase/client');
+        const { data } = await supabase.from('settings').select('value').eq('key', 'whatsapp_number').single();
+        if (data?.value) setWhatsappNumber(data.value);
+      } catch (e) {}
+    };
+    fetchSettings();
+
+    const handleUpdate = () => fetchSettings();
+    window.addEventListener('settingsUpdated', handleUpdate);
+    return () => window.removeEventListener('settingsUpdated', handleUpdate);
+  }, []);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -68,6 +82,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   const [isFavorite, setIsFavorite] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [showSizeGuide, setShowSizeGuide] = React.useState(false);
+  const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = React.useState(false);
 
   // Combine main image and gallery
   const allImages = React.useMemo(() => {
@@ -78,6 +93,23 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
     }
     return images;
   }, [product.image_url, product.gallery]);
+
+  const buildWhatsappMessage = () => {
+    // Use env var so it always points to the real domain, never localhost
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '');
+    let msg = `Hola, estoy interesado en el producto: *${product.name}*`;
+    if (selectedSize) {
+      msg += `\n\u2022 Talla: ${selectedSize}`;
+    }
+    if (product.color_name) {
+      msg += `\n\u2022 Color: ${product.color_name}`;
+    }
+    // Link to the product page — WhatsApp scrapes OG tags and shows image preview automatically
+    msg += `\n\n\ud83d\udc49 Ver producto: ${siteUrl}/product?id=${product.id}`;
+    return encodeURIComponent(msg);
+  };
+
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${buildWhatsappMessage()}`;
 
   // Auto-slide effect
   useEffect(() => {
@@ -303,7 +335,12 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden mb-4"
                       >
-                        <img src="/medidas.svg" alt="Guía de Tallas" className="w-full h-auto rounded-xl border border-black/5" />
+                        <img 
+                          src="/medidas1.svg" 
+                          alt="Guía de Tallas" 
+                          className="w-full h-auto rounded-xl border border-black/5 cursor-pointer hover:opacity-90 transition-opacity" 
+                          onClick={() => setIsSizeGuideModalOpen(true)}
+                        />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -367,6 +404,36 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
           </a>
         </div>
       </motion.div>
+
+      {/* Size Guide Modal (Lightbox) */}
+      <AnimatePresence>
+        {isSizeGuideModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setIsSizeGuideModalOpen(false)}
+          >
+            <motion.button
+              className="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              onClick={() => setIsSizeGuideModalOpen(false)}
+            >
+              <span className="material-symbols-outlined text-[24px]">close</span>
+            </motion.button>
+            <motion.img
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              src="/medidas1.svg"
+              alt="Guía de Tallas Completa"
+              className="max-w-full max-h-[90vh] object-contain rounded-2xl bg-white p-2"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

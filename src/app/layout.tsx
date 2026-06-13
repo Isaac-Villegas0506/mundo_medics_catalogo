@@ -21,6 +21,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
         />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@flaticon/flaticon-uicons@3.3.0/css/all/all.css"
+        />
       </head>
       <body suppressHydrationWarning className={`${inter.className} min-h-screen bg-background`}>
         {children}
