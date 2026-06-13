@@ -105,7 +105,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       msg += `\n\u2022 Color: ${product.color_name}`;
     }
     // Link to the product page with ?ref=wa so WhatsApp always scrapes fresh OG tags
-    msg += `\n\n\uD83D\uDC49 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa`;
+    msg += `\n\n\uD83D\uDC49 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa2`;
     return encodeURIComponent(msg);
   };
 

@@ -103,8 +103,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     if (product.color_name) {
       msg += `\n• Color: ${product.color_name}`;
     }
-    // Link to the product page with ?ref=wa so WhatsApp always scrapes fresh OG tags
-    msg += `\n\n👉 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa`;
+    // Link to the product page with ?ref=wa2 so WhatsApp always scrapes fresh OG tags
+    msg += `\n\n👉 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa2`;
     return encodeURIComponent(msg);
   };
 
