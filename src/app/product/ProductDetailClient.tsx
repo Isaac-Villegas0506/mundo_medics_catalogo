@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'motion/react';
+import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 
 interface Product {
   id: string;
@@ -18,6 +19,9 @@ interface Product {
   material: string | null;
   category: string;
   sizes: string[];
+  tags?: string[];
+  is_featured?: boolean;
+  customization_options?: string[];
 }
 
 interface ProductDetailClientProps {
@@ -57,15 +61,6 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     }
     return images;
   }, [product.image_url, product.gallery]);
-
-  // Auto-slide effect
-  useEffect(() => {
-    if (allImages.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentImageIndex(prev => (prev === allImages.length - 1 ? 0 : prev + 1));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [allImages.length]);
 
   // Load favorites from local storage
   useEffect(() => {
@@ -157,6 +152,13 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <span className="text-[#bbb] font-light">Próximamente</span>
         )}
 
+        {/* Badges on the image */}
+        <ProductBadges
+          tags={product.tags}
+          isFeatured={product.is_featured}
+          size="md"
+        />
+
         {/* Carousel arrows */}
         {allImages.length > 1 && (
           <>
@@ -205,9 +207,16 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </div>
 
           {/* Description */}
-          <p className="text-[#888] text-sm md:text-base leading-relaxed mb-8 mt-3 font-normal">
+          <p className="text-[#888] text-sm md:text-base leading-relaxed mb-6 mt-3 font-normal">
             {product.description || 'Sin descripción disponible.'}
           </p>
+
+          {/* Customization banner (e.g. Bordado personalizado disponible) */}
+          {product.customization_options && product.customization_options.length > 0 && (
+            <div className="mb-7">
+              <CustomizationLabel options={product.customization_options} />
+            </div>
+          )}
 
           {/* Color */}
           {product.color_hex_codes && product.color_hex_codes.length > 0 && (
@@ -236,30 +245,12 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div className="flex justify-between items-center mb-3">
                 <span className="text-[11px] font-semibold text-[#aaa] uppercase tracking-widest">Talla</span>
                 <button
-                  onClick={() => setShowSizeGuide(!showSizeGuide)}
+                  onClick={() => setIsSizeGuideModalOpen(true)}
                   className="text-xs text-[#888] hover:text-[#1a1a1a] underline underline-offset-2 font-medium transition-colors"
                 >
-                  {showSizeGuide ? 'Ocultar guía' : 'Guía de tallas'}
+                  Guía de tallas
                 </button>
               </div>
-
-              <AnimatePresence>
-                {showSizeGuide && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mb-5"
-                  >
-                    <img
-                      src="/medidas1.svg"
-                      alt="Guía de Tallas"
-                      className="w-full h-auto rounded-xl border border-black/5 cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => setIsSizeGuideModalOpen(true)}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               <div className="flex gap-2.5 flex-wrap">
                 {product.sizes.map((s) => (
@@ -299,7 +290,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             href={whatsappUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-center w-full bg-[#1a1a1a] text-white py-3.5 md:py-4 rounded-2xl font-semibold text-base hover:bg-[#333] transition-all active:scale-[0.98] gap-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.12)]"
+            className="flex items-center justify-center w-full bg-[#25D366] text-white py-3.5 md:py-4 rounded-2xl font-semibold text-base hover:bg-[#1ebe5d] transition-all active:scale-[0.98] gap-2.5 shadow-[0_4px_20px_rgba(37,211,102,0.35)]"
           >
             <svg className="w-5 h-5 fill-current flex-shrink-0" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
               <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
@@ -316,25 +307,27 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4"
             onClick={() => setIsSizeGuideModalOpen(false)}
           >
-            <motion.button
-              className="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-              onClick={() => setIsSizeGuideModalOpen(false)}
-            >
-              <span className="material-symbols-outlined text-[24px]">close</span>
-            </motion.button>
-            <motion.img
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              src="/medidas1.svg"
-              alt="Guía de Tallas Completa"
-              className="max-w-full max-h-[90vh] object-contain rounded-2xl bg-white p-2"
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div className="relative flex flex-col items-end max-w-full max-h-[90vh]">
+              <motion.button
+                className="mb-3 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                onClick={() => setIsSizeGuideModalOpen(false)}
+              >
+                <span className="material-symbols-outlined text-[24px]">close</span>
+              </motion.button>
+              <motion.img
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                src="/medidas1.svg"
+                alt="Guía de Tallas Completa"
+                className="max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

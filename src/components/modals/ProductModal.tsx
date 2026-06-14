@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence, useScroll, useTransform, useDragControls } from 'motion/react';
+import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 
 export interface Product {
   id: string;
@@ -17,6 +18,9 @@ export interface Product {
   material: string | null;
   category: string;
   sizes: string[];
+  tags?: string[];
+  is_featured?: boolean;
+  customization_options?: string[];
 }
 
 interface ProductModalProps {
@@ -111,15 +115,6 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
 
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${buildWhatsappMessage()}`;
 
-  // Auto-slide effect
-  useEffect(() => {
-    if (allImages.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentImageIndex(prev => (prev === allImages.length - 1 ? 0 : prev + 1));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [allImages.length]);
-
   // Load favorites from local storage
   useEffect(() => {
     try {
@@ -161,11 +156,12 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       {/* Modal Container */}
       <motion.div
         key="modal"
+        layoutId={`product-card-${product.id}`}
         drag="y"
         dragControls={dragControls}
         dragListener={false}
         dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 1 }}
+        dragElastic={{ top: 0.02, bottom: 0.8 }}
         onDragEnd={handleDragEnd}
         className="fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
           bg-[#eeecea] md:bg-white rounded-t-[28px] md:rounded-[28px]
@@ -208,6 +204,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               {allImages.length > 0 ? (
                 <>
                   <motion.img
+                    layoutId={`product-image-${product.id}`}
                     style={{ scale: imageScale, opacity: imageOpacity, y: imageY }}
                     alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
                     className="object-contain w-full h-full transition-all duration-500"
@@ -247,6 +244,13 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               ) : (
                 <span className="text-[#bbb] text-sm font-light">Próximamente</span>
               )}
+
+              {/* Badges on the image */}
+              <ProductBadges
+                tags={product.tags}
+                isFeatured={product.is_featured}
+                size="md"
+              />
 
               {/* Action Buttons Container */}
               <div className="absolute top-4 right-4 md:top-3 md:right-3 flex gap-2 z-50">
@@ -292,6 +296,13 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                 {product.description || 'Sin descripción disponible.'}
               </p>
 
+              {/* Customization banner (e.g. Bordado personalizado disponible) */}
+              {product.customization_options && product.customization_options.length > 0 && (
+                <div className="mb-5">
+                  <CustomizationLabel options={product.customization_options} variant="modal" />
+                </div>
+              )}
+
               {/* Color selector */}
               {product.color_hex_codes && product.color_hex_codes.length > 0 && (
                 <div className="mb-5">
@@ -320,30 +331,12 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                   <div className="flex justify-between items-center mb-2.5">
                     <span className="text-[11px] font-semibold text-[#aaa] uppercase tracking-widest block">Talla</span>
                     <button 
-                      onClick={() => setShowSizeGuide(!showSizeGuide)}
+                      onClick={() => setIsSizeGuideModalOpen(true)}
                       className="text-xs text-[#888] hover:text-[#1a1a1a] underline underline-offset-2 font-medium transition-colors"
                     >
-                      {showSizeGuide ? 'Ocultar guía' : 'Guía de tallas'}
+                      Guía de tallas
                     </button>
                   </div>
-                  
-                  <AnimatePresence>
-                    {showSizeGuide && (
-                      <motion.div 
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden mb-4"
-                      >
-                        <img 
-                          src="/medidas1.svg" 
-                          alt="Guía de Tallas" 
-                          className="w-full h-auto rounded-xl border border-black/5 cursor-pointer hover:opacity-90 transition-opacity" 
-                          onClick={() => setIsSizeGuideModalOpen(true)}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   <div className="flex gap-2">
                     {product.sizes.map((s) => (
@@ -395,7 +388,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
             href={whatsappUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex-1 flex items-center justify-center h-12 bg-[#1a1a1a] text-white rounded-2xl text-sm font-semibold hover:bg-[#333] transition-colors active:scale-[0.97] gap-2"
+            className="flex-1 flex items-center justify-center h-12 bg-[#25D366] text-white rounded-2xl text-sm font-semibold hover:bg-[#1ebe5d] transition-colors active:scale-[0.97] gap-2"
           >
             <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
               <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
@@ -412,25 +405,27 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4"
             onClick={() => setIsSizeGuideModalOpen(false)}
           >
-            <motion.button
-              className="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-              onClick={() => setIsSizeGuideModalOpen(false)}
-            >
-              <span className="material-symbols-outlined text-[24px]">close</span>
-            </motion.button>
-            <motion.img
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              src="/medidas1.svg"
-              alt="Guía de Tallas Completa"
-              className="max-w-full max-h-[90vh] object-contain rounded-2xl bg-white p-2"
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div className="relative flex flex-col items-end max-w-full max-h-[90vh]">
+              <motion.button
+                className="mb-3 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                onClick={() => setIsSizeGuideModalOpen(false)}
+              >
+                <span className="material-symbols-outlined text-[24px]">close</span>
+              </motion.button>
+              <motion.img
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                src="/medidas1.svg"
+                alt="Guía de Tallas Completa"
+                className="max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

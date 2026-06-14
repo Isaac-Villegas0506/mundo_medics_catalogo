@@ -102,31 +102,28 @@ function CatalogContent() {
         {/* Category Chips */}
         <section className="mb-6 -mx-4 px-4 overflow-x-auto no-scrollbar">
           <div className="flex gap-2 w-max pb-1">
-            <motion.button
-              whileTap={{ scale: 0.93 }}
-              onClick={() => setActiveCategory('Todos')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap
-                ${activeCategory === 'Todos'
-                  ? 'bg-[#1a1a1a] text-white'
-                  : 'bg-white border border-black/10 text-[#555] hover:bg-[#f0f0ee]'
-                }`}
-            >
-              Todos
-            </motion.button>
-            {categories.map(cat => {
-              const active = cat.name === activeCategory;
+            {['Todos', ...categories.map(cat => cat.name)].map((catName) => {
+              const active = catName === activeCategory;
               return (
                 <motion.button
-                  key={cat.id}
-                  whileTap={{ scale: 0.93 }}
-                  onClick={() => setActiveCategory(cat.name)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap
-                    ${active
-                      ? 'bg-[#1a1a1a] text-white'
-                      : 'bg-white border border-black/10 text-[#555] hover:bg-[#f0f0ee]'
-                    }`}
+                  key={catName}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveCategory(catName)}
+                  className={`relative px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-300 whitespace-nowrap outline-none
+                    ${active ? 'text-white' : 'bg-white border border-black/10 text-[#555] hover:bg-[#f0f0ee]'}
+                  `}
+                  style={{ border: active ? '1px solid transparent' : undefined }}
                 >
-                  {cat.name}
+                  {active && (
+                    <motion.div
+                      layoutId="activeCategoryBg"
+                      className="absolute inset-0 bg-[#1a1a1a] rounded-full"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      style={{ zIndex: 0 }}
+                    />
+                  )}
+                  <span className="relative z-10">{catName}</span>
                 </motion.button>
               );
             })}

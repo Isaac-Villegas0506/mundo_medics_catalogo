@@ -14,6 +14,7 @@ export default function ProductEditorPage() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<{ id: string, file: File, progress: number, url: string }[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -28,6 +29,7 @@ export default function ProductEditorPage() {
     tags: [] as string[],
     gallery: [] as string[],
     image_url: '', // Main image, usually gallery[0]
+    customization_options: [] as string[],
   });
 
   const [newColorHex, setNewColorHex] = useState('#000000');
@@ -61,6 +63,7 @@ export default function ProductEditorPage() {
         tags: data.tags || [],
         gallery: data.gallery || (data.image_url ? [data.image_url] : []),
         image_url: data.image_url || '',
+        customization_options: data.customization_options || [],
       });
     }
     setLoading(false);
@@ -94,37 +97,67 @@ export default function ProductEditorPage() {
     handleChange('tags', newTags);
   };
 
+  const toggleCustomization = (option: string) => {
+    const newOptions = formData.customization_options.includes(option) 
+      ? formData.customization_options.filter(o => o !== option)
+      : [...formData.customization_options, option];
+    handleChange('customization_options', newOptions);
+  };
+
   // Image Upload via Supabase Storage
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const newFiles = Array.from(files).map(file => ({
+      id: Math.random().toString(36).substring(2, 15),
+      file,
+      progress: 0,
+      url: URL.createObjectURL(file)
+    }));
+
+    setUploadingFiles(prev => [...prev, ...newFiles]);
     setSaving(true);
+
     const uploadedUrls = [];
 
-    for (const file of Array.from(files)) {
-      const fileExt = file.name.split('.').pop();
+    for (const item of newFiles) {
+      const interval = setInterval(() => {
+        setUploadingFiles(prev => prev.map(f => f.id === item.id ? { ...f, progress: Math.min(f.progress + (Math.random() * 15 + 5), 90) } : f));
+      }, 300);
+
+      const fileExt = item.file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       
       const { data, error } = await supabase.storage
         .from('products')
-        .upload(fileName, file);
+        .upload(fileName, item.file);
+
+      clearInterval(interval);
+      setUploadingFiles(prev => prev.map(f => f.id === item.id ? { ...f, progress: 100 } : f));
 
       if (error) {
         console.error('Error uploading:', error);
-        alert('Error al subir la imagen. Verifica que creaste el bucket en Supabase.');
+        alert(`Error al subir la imagen ${item.file.name}. Verifica que creaste el bucket en Supabase.`);
       } else if (data) {
         const { data: publicData } = supabase.storage
           .from('products')
           .getPublicUrl(fileName);
         uploadedUrls.push(publicData.publicUrl);
       }
+      
+      await new Promise(r => setTimeout(r, 300));
+      setUploadingFiles(prev => prev.filter(f => f.id !== item.id));
+      URL.revokeObjectURL(item.url);
     }
 
     setSaving(false);
     if (uploadedUrls.length > 0) {
       handleChange('gallery', [...formData.gallery, ...uploadedUrls]);
     }
+    
+    // Clear input so same file can be selected again
+    e.target.value = '';
   };
 
   const handleSave = async () => {
@@ -147,6 +180,7 @@ export default function ProductEditorPage() {
 
   const availableTags = ['Nuevo', 'Tendencia', 'Oferta', 'Destacado'];
   const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Única'];
+  const availableCustomizations = ['Bordado personalizado', 'Estampado personalizado', 'Grabado láser'];
 
   return (
     <main className="flex-1 p-4 md:p-8 w-full max-w-4xl mx-auto flex flex-col gap-6 pb-[100px] md:pb-8">
@@ -224,10 +258,16 @@ export default function ProductEditorPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-2">Descripción</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider">Descripción</label>
+                  <span className={`text-[10px] font-medium ${formData.description.length >= 70 ? 'text-red-400' : 'text-[#aaa]'}`}>
+                    {formData.description.length}/70
+                  </span>
+                </div>
                 <textarea 
                   value={formData.description} 
                   onChange={e => handleChange('description', e.target.value)}
+                  maxLength={70}
                   rows={4}
                   className="w-full bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-4 py-3 text-sm text-[#1a1a1a] transition-all focus:bg-white resize-none"
                   placeholder="Describe las características principales..."
@@ -266,7 +306,20 @@ export default function ProductEditorPage() {
                   )}
                 </Reorder.Item>
               ))}
-              <label className="w-28 h-28 flex-shrink-0 bg-[#f8f8f6] border-2 border-dashed border-[#ece9e2] rounded-2xl flex flex-col items-center justify-center text-[#aaa] hover:bg-[#f4f2f0] hover:border-[#ccc] transition-all cursor-pointer">
+
+              {uploadingFiles.map(file => (
+                <li key={file.id} className="w-28 h-28 flex-shrink-0 bg-[#f4f2f0] rounded-2xl overflow-hidden relative border border-black/5" style={{ listStyle: 'none' }}>
+                  <img src={file.url} alt={`Uploading ${file.file.name}`} className="w-full h-full object-cover opacity-50 blur-[2px]" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                    <div className="w-16 h-1.5 bg-black/20 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#1a1a1a] transition-all duration-300" style={{ width: `${file.progress}%` }} />
+                    </div>
+                    <span className="text-[10px] font-bold text-[#1a1a1a] bg-white/80 px-2 py-0.5 rounded-md backdrop-blur-sm shadow-sm">{Math.round(file.progress)}%</span>
+                  </div>
+                </li>
+              ))}
+
+              <label className="w-28 h-28 flex-shrink-0 bg-[#f8f8f6] border-2 border-dashed border-[#ece9e2] rounded-2xl flex flex-col items-center justify-center text-[#aaa] hover:bg-[#f4f2f0] hover:border-[#ccc] transition-all cursor-pointer" style={{ listStyle: 'none' }}>
                 <span className="material-symbols-outlined text-[24px] mb-1" style={{ fontVariationSettings: "'wght' 300" }}>add_photo_alternate</span>
                 <span className="text-[10px] font-medium">Añadir</span>
                 <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -330,13 +383,28 @@ export default function ProductEditorPage() {
                   </div>
                   
                   <div className="flex items-center gap-2 pl-3 border-l border-[#ece9e2]">
+                    <div className="relative w-10 h-10 shrink-0 rounded-full border border-black/10 shadow-sm overflow-hidden group cursor-pointer">
+                      <div 
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ backgroundColor: newColorHex }}
+                      />
+                      <input 
+                        type="color" 
+                        value={newColorHex} 
+                        onChange={e => setNewColorHex(e.target.value)}
+                        className="absolute inset-[-10px] w-16 h-16 border-none outline-none cursor-pointer opacity-0"
+                        title="Elegir color visualmente"
+                      />
+                    </div>
                     <input 
-                      type="color" 
+                      type="text" 
                       value={newColorHex} 
                       onChange={e => setNewColorHex(e.target.value)}
-                      className="w-10 h-10 rounded-full border-none outline-none cursor-pointer p-0 bg-transparent"
+                      maxLength={7}
+                      className="w-24 bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] transition-all focus:bg-white font-mono uppercase"
+                      placeholder="#000000"
                     />
-                    <button onClick={addColor} className="text-sm font-medium text-[#555] bg-[#f4f2f0] hover:bg-[#eceae6] px-3 py-2 rounded-xl transition-colors">
+                    <button onClick={addColor} className="text-sm font-medium text-[#555] bg-[#f4f2f0] hover:bg-[#eceae6] px-3 py-2.5 rounded-xl transition-colors whitespace-nowrap">
                       Añadir Color
                     </button>
                   </div>
@@ -385,6 +453,36 @@ export default function ProductEditorPage() {
                     {active && <span className="material-symbols-outlined text-[12px] mr-1 align-middle" style={{ fontVariationSettings: "'wght' 600" }}>check</span>}
                     {tag}
                   </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5">
+            <h3 className="font-semibold text-[#1a1a1a] mb-5">Personalización</h3>
+            <p className="text-[11px] text-[#888] mb-4 leading-relaxed">
+              Activa las opciones de personalización disponibles para este producto. Se mostrarán como etiqueta destacada en la tarjeta y vista de detalle.
+            </p>
+            <div className="flex flex-col gap-2">
+              {availableCustomizations.map(option => {
+                const active = formData.customization_options.includes(option);
+                return (
+                  <label 
+                    key={option} 
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border ${
+                      active 
+                        ? 'bg-[#e8f1ff] border-[#1f4ed8]/20' 
+                        : 'bg-[#f8f8f6] border-transparent hover:border-black/5'
+                    }`}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={active}
+                      onChange={() => toggleCustomization(option)}
+                      className="w-4 h-4 text-[#1f4ed8] focus:ring-[#1f4ed8] rounded"
+                    />
+                    <span className={`text-sm font-medium ${active ? 'text-[#1f4ed8]' : 'text-[#1a1a1a]'}`}>{option}</span>
+                  </label>
                 );
               })}
             </div>
