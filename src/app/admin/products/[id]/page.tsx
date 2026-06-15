@@ -286,7 +286,7 @@ export default function ProductEditorPage() {
               </label>
             </div>
             
-            <Reorder.Group axis="x" values={formData.gallery} onReorder={(val) => handleChange('gallery', val)} className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+            <Reorder.Group axis="x" values={formData.gallery} onReorder={(val) => handleChange('gallery', val)} className="flex flex-wrap gap-3 pb-2">
               {formData.gallery.map((url, i) => (
                 <Reorder.Item key={url} value={url} className="w-28 h-28 flex-shrink-0 bg-[#f4f2f0] rounded-2xl overflow-hidden relative group cursor-grab active:cursor-grabbing border border-black/5">
                   <img src={url} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
@@ -364,10 +364,10 @@ export default function ProductEditorPage() {
                   placeholder="Ej. Blanco Nieve o Pack Mixto"
                 />
                 
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap gap-2">
                     {formData.color_hex_codes.map((hex, i) => (
-                      <div key={i} className="relative group">
+                      <div key={i} className="relative group shrink-0">
                         <div 
                           className="w-10 h-10 rounded-full border border-black/10 shadow-sm flex items-center justify-center cursor-pointer"
                           style={{ background: hex }}
@@ -382,7 +382,7 @@ export default function ProductEditorPage() {
                     ))}
                   </div>
                   
-                  <div className="flex items-center gap-2 pl-3 border-l border-[#ece9e2]">
+                  <div className="flex flex-wrap items-center gap-2 border-l border-[#ece9e2] pl-3">
                     <div className="relative w-10 h-10 shrink-0 rounded-full border border-black/10 shadow-sm overflow-hidden group cursor-pointer">
                       <div 
                         className="absolute inset-0 pointer-events-none"

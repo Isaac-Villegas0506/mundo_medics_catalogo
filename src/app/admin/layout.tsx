@@ -9,7 +9,6 @@ import { supabase } from '@/utils/supabase/client';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -75,18 +74,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-40 border-b border-[#ece9e2]">
           <div className="flex justify-between items-center px-4 md:px-8 h-16 w-full mx-auto">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5 transition-colors active:scale-95"
-              >
-                <motion.span
-                  animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
-                  className="material-symbols-outlined text-[24px] text-[#1a1a1a]"
-                  style={{ fontVariationSettings: "'wght' 300" }}
-                >
-                  {isMobileMenuOpen ? 'close' : 'menu'}
-                </motion.span>
-              </button>
               <h1 className="font-semibold text-[20px] tracking-tight text-[#1a1a1a]">Panel de Control</h1>
             </div>
             <div className="flex items-center gap-3">

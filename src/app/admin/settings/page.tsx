@@ -115,23 +115,26 @@ export default function AdminSettingsPage() {
 
   return (
     <main className="flex-1 p-4 md:p-8 w-full max-w-4xl mx-auto flex flex-col gap-6 pb-[100px] md:pb-8">
-      <div>
-        <h2 className="text-[28px] md:text-[34px] font-semibold tracking-tight text-[#1a1a1a] leading-tight">
-          Ajustes
-        </h2>
-        <p className="text-[#888] text-sm font-normal mt-1">
-          Configura información general de la tienda, redes sociales y ubicación.
-        </p>
-      </div>
-
-      <div className="flex justify-end mb-2">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-[#1a1a1a] text-white font-semibold text-sm px-6 py-2.5 rounded-xl hover:bg-[#333] transition-colors shadow-md disabled:opacity-50"
-        >
-          {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-        </button>
+      
+      {/* Header Sticky */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 bg-white/50 backdrop-blur-md p-4 md:px-6 md:py-4 rounded-3xl sticky top-[80px] z-30 shadow-sm border border-black/5">
+        <div>
+          <h2 className="text-[20px] font-semibold tracking-tight text-[#1a1a1a]">
+            Ajustes Generales
+          </h2>
+          <p className="text-[11px] text-[#aaa] uppercase tracking-wider mt-1">
+            Información, redes y mapa
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-[#1a1a1a] text-white font-semibold text-sm px-6 py-2.5 rounded-xl hover:bg-[#333] transition-colors shadow-md disabled:opacity-50"
+          >
+            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
+        </div>
       </div>
       
       {saveMessage && (
@@ -143,7 +146,7 @@ export default function AdminSettingsPage() {
       {isLoading ? (
         <div className="p-10 text-center">Cargando configuración...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Contacto */}
           <div className="w-full bg-white rounded-3xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 flex flex-col gap-4">
             <h3 className="font-semibold text-lg text-[#1a1a1a] mb-2">Contacto General</h3>

@@ -35,7 +35,7 @@ export default function LocationModal({ isOpen, onClose, settings }: LocationMod
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white w-[90vw] max-w-[420px] rounded-[24px] shadow-xl pointer-events-auto overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-white w-[90vw] max-w-[420px] rounded-[24px] shadow-xl pointer-events-auto overflow-hidden flex flex-col max-h-[90dvh]"
             >
               {/* Header */}
               <div className="flex justify-between items-center p-4 border-b border-black/5">
@@ -106,7 +106,6 @@ export default function LocationModal({ isOpen, onClose, settings }: LocationMod
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 bg-[#1a1a1a] text-white py-3.5 rounded-xl font-semibold hover:bg-[#333] transition-colors shadow-md"
                 >
-                  <span className="material-symbols-outlined text-[20px]">directions</span>
                   Ver ruta en Google Maps
                 </a>
               </div>
