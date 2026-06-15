@@ -21,6 +21,8 @@ export interface Product {
   tags?: string[];
   is_featured?: boolean;
   customization_options?: string[];
+  is_set?: boolean;
+  included_products?: string[];
 }
 
 interface ProductModalProps {
@@ -39,6 +41,28 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
 
 function ModalContent({ onClose, product }: { onClose: () => void, product: Product }) {
   const [whatsappNumber, setWhatsappNumber] = React.useState(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
+  const [includedProductsData, setIncludedProductsData] = React.useState<any[]>([]);
+
+  // Fetch included products if it's a set
+  useEffect(() => {
+    if (product.is_set && product.included_products && product.included_products.length > 0) {
+      const fetchIncluded = async () => {
+        const { supabase } = await import('@/utils/supabase/client');
+        const { data } = await supabase
+          .from('products')
+          .select('id, name, color_name, image_url')
+          .in('id', product.included_products || []);
+        
+        if (data) {
+          const sorted = [...data].sort((a, b) => 
+            (product.included_products?.indexOf(a.id) || 0) - (product.included_products?.indexOf(b.id) || 0)
+          );
+          setIncludedProductsData(sorted);
+        }
+      };
+      fetchIncluded();
+    }
+  }, [product]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -101,12 +125,14 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   const buildWhatsappMessage = () => {
     // Use env var so it always points to the real domain, never localhost
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '');
-    let msg = `Hola, estoy interesado en el producto: *${product.name}*`;
-    if (selectedSize) {
-      msg += `\n\u2022 Talla: ${selectedSize}`;
-    }
-    if (product.color_name) {
-      msg += `\n\u2022 Color: ${product.color_name}`;
+    let msg = `Hola, estoy interesado en el ${product.is_set ? 'set completo' : 'producto'}: *${product.name}*`;
+    if (!product.is_set) {
+      if (selectedSize) {
+        msg += `\n\u2022 Talla: ${selectedSize}`;
+      }
+      if (product.color_name) {
+        msg += `\n\u2022 Color: ${product.color_name}`;
+      }
     }
     // Link to the product page with ?ref=wa so WhatsApp always scrapes fresh OG tags
     msg += `\n\n\uD83D\uDC49 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa2`;
@@ -164,7 +190,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
         onDragEnd={handleDragEnd}
         className="fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
           bg-[#eeecea] md:bg-white rounded-t-[28px] md:rounded-[28px]
-          max-h-[92svh] md:max-h-[82vh] h-[92svh] md:h-auto
+          max-h-[92svh] md:max-h-[82vh] h-[92svh] md:h-[82vh]
           w-full md:w-[840px]
           md:-translate-x-1/2 md:-translate-y-1/2
           shadow-[0_-6px_40px_rgba(0,0,0,0.08)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)]
@@ -355,21 +381,61 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                 </div>
               )}
 
-              {/* Extra info */}
-              {(product.material || product.care_instructions) && (
-                <div className="pt-4 border-t border-[#f0f0ee]">
-                  {product.material && (
-                    <p className="text-xs text-[#aaa] font-normal mb-1">
-                      Material: {product.material}
-                    </p>
-                  )}
-                  {product.care_instructions && (
-                    <p className="text-xs text-[#aaa] font-normal">
-                      Cuidado: {product.care_instructions}
-                    </p>
-                  )}
+              {/* Included Products List */}
+              {product.is_set && (
+                <div className="mb-5">
+                  <h3 className="text-[15px] font-semibold text-[#1a1a1a] mb-4">
+                    Incluye {product.included_products?.length || 0} productos
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {includedProductsData.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 md:p-4 bg-white border border-[#ece9e2] rounded-2xl shadow-sm hover:shadow-md transition-shadow group gap-3">
+                        <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="material-symbols-outlined text-[20px] text-[#aaa] w-full h-full flex items-center justify-center">image</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-[#1a1a1a] text-sm md:text-base leading-tight truncate">{item.name}</span>
+                            {item.color_name && <span className="text-xs text-[#888] mt-1 truncate">{item.color_name}</span>}
+                          </div>
+                        </div>
+                        <Link 
+                          href={`/product?id=${item.id}`}
+                          onClick={onClose}
+                          className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-xl text-xs font-semibold hover:bg-[#333] transition-colors active:scale-95 flex-shrink-0"
+                        >
+                          Ver producto
+                        </Link>
+                      </div>
+                    ))}
+                    {product.included_products?.length && includedProductsData.length === 0 ? (
+                      <p className="text-sm text-[#888] italic">Cargando productos incluidos...</p>
+                    ) : null}
+                  </div>
                 </div>
               )}
+
+
+                  {/* Extra info */}
+                  {(product.material || product.care_instructions) && (
+                    <div className="pt-4 border-t border-[#f0f0ee]">
+                      {product.material && (
+                        <p className="text-xs text-[#aaa] font-normal mb-1">
+                          Material: {product.material}
+                        </p>
+                      )}
+                      {product.care_instructions && (
+                        <p className="text-xs text-[#aaa] font-normal">
+                          Cuidado: {product.care_instructions}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
             </div>
           </motion.div>
         </div>

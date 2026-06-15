@@ -22,6 +22,8 @@ interface Product {
   tags?: string[];
   is_featured?: boolean;
   customization_options?: string[];
+  is_set?: boolean;
+  included_products?: string[];
 }
 
 interface ProductDetailClientProps {
@@ -36,6 +38,28 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
+  const [includedProductsData, setIncludedProductsData] = useState<any[]>([]);
+
+  // Fetch included products if it's a set
+  useEffect(() => {
+    if (product.is_set && product.included_products && product.included_products.length > 0) {
+      const fetchIncluded = async () => {
+        const { data } = await supabase
+          .from('products')
+          .select('id, name, color_name, image_url')
+          .in('id', product.included_products || []);
+        
+        if (data) {
+          // Sort them in the exact order they were added
+          const sorted = [...data].sort((a, b) => 
+            (product.included_products?.indexOf(a.id) || 0) - (product.included_products?.indexOf(b.id) || 0)
+          );
+          setIncludedProductsData(sorted);
+        }
+      };
+      fetchIncluded();
+    }
+  }, [product]);
 
   // Fetch WhatsApp number from settings
   useEffect(() => {
@@ -91,12 +115,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const buildWhatsappMessage = () => {
     // Use env var so it always points to the real domain, never localhost
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '');
-    let msg = `Hola, estoy interesado en el producto: *${product.name}*`;
-    if (selectedSize) {
-      msg += `\n• Talla: ${selectedSize}`;
-    }
-    if (product.color_name) {
-      msg += `\n• Color: ${product.color_name}`;
+    let msg = `Hola, estoy interesado en el ${product.is_set ? 'set completo' : 'producto'}: *${product.name}*`;
+    if (!product.is_set) {
+      if (selectedSize) {
+        msg += `\n• Talla: ${selectedSize}`;
+      }
+      if (product.color_name) {
+        msg += `\n• Color: ${product.color_name}`;
+      }
     }
     // Link to the product page with ?ref=wa2 so WhatsApp always scrapes fresh OG tags
     msg += `\n\n👉 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa2`;
@@ -218,6 +244,43 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             </div>
           )}
 
+          {/* Included Products List */}
+          {product.is_set && (
+            <div className="mb-7">
+              <h3 className="text-[15px] font-semibold text-[#1a1a1a] mb-4">
+                Incluye {product.included_products?.length || 0} productos
+              </h3>
+              <div className="flex flex-col gap-3">
+                {includedProductsData.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 md:p-4 bg-white border border-[#ece9e2] rounded-2xl shadow-sm hover:shadow-md transition-shadow group gap-3">
+                    <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-[20px] text-[#aaa] w-full h-full flex items-center justify-center">image</span>
+                        )}
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0 pr-1">
+                        <span className="font-semibold text-[#1a1a1a] text-sm md:text-base leading-tight truncate">{item.name}</span>
+                        {item.color_name && <span className="text-xs text-[#888] mt-1 truncate">{item.color_name}</span>}
+                      </div>
+                    </div>
+                    <Link 
+                      href={`/product?id=${item.id}`}
+                      className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-xl text-xs font-semibold hover:bg-[#333] transition-colors active:scale-95 flex-shrink-0"
+                    >
+                      Ver producto
+                    </Link>
+                  </div>
+                ))}
+                {product.included_products?.length && includedProductsData.length === 0 ? (
+                  <p className="text-sm text-[#888] italic">Cargando productos incluidos...</p>
+                ) : null}
+              </div>
+            </div>
+          )}
+
           {/* Color */}
           {product.color_hex_codes && product.color_hex_codes.length > 0 && (
             <div className="mb-7">
@@ -270,18 +333,22 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             </div>
           )}
 
-          {/* Care info */}
-          {product.care_instructions && (
-            <div className="bg-[#f8f6f2] rounded-2xl p-4 md:p-5 flex items-start gap-3 border border-[#ece9e2] mb-6">
-              <span className="material-symbols-outlined text-[#bbb] mt-0.5" style={{ fontVariationSettings: "'wght' 300" }}>laundry</span>
-              <div>
-                <h4 className="text-sm font-semibold text-[#1a1a1a] mb-1">Cuidados de la prenda</h4>
-                <p className="text-xs text-[#999] leading-relaxed">
-                  {product.care_instructions}
-                </p>
-              </div>
-            </div>
-          )}
+
+
+
+              {/* Care info */}
+              {product.care_instructions && (
+                <div className="bg-[#f8f6f2] rounded-2xl p-4 md:p-5 flex items-start gap-3 border border-[#ece9e2] mb-6">
+                  <span className="material-symbols-outlined text-[#bbb] mt-0.5" style={{ fontVariationSettings: "'wght' 300" }}>laundry</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-[#1a1a1a] mb-1">Cuidados de la prenda</h4>
+                    <p className="text-xs text-[#999] leading-relaxed">
+                      {product.care_instructions}
+                    </p>
+                  </div>
+                </div>
+              )}
+
         </motion.div>
 
         {/* CTA footer */}

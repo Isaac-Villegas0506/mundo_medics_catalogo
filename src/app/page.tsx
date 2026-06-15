@@ -10,6 +10,10 @@ import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
 
+// Module-level cache to preserve data and scroll position across navigations
+let globalProductsCache: Product[] | null = null;
+let globalCategoriesCache: { id: string, name: string }[] | null = null;
+let globalSettingsCache: Record<string, string> | null = null;
 export default function CatalogPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#f8f8f6] flex items-center justify-center">Cargando catálogo...</div>}>
@@ -25,14 +29,14 @@ function CatalogContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(categoryParam || 'Todos');
-  const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState<{ id: string, name: string }[]>(globalCategoriesCache || []);
+  const [isLoading, setIsLoading] = useState(!globalProductsCache);
   
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(globalProductsCache || []);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [settings, setSettings] = useState<Record<string, string>>({});
-  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
+  const [settings, setSettings] = useState<Record<string, string>>(globalSettingsCache || {});
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(!!globalSettingsCache);
 
   useEffect(() => {
     const loadFavs = () => {
@@ -60,7 +64,9 @@ function CatalogContent() {
 
   useEffect(() => {
     async function fetchData() {
-      setIsLoading(true);
+      if (!globalProductsCache) {
+        setIsLoading(true);
+      }
       
       // Fetch categories
       const { data: catData } = await supabase
@@ -70,6 +76,7 @@ function CatalogContent() {
         
       if (catData) {
         setCategories(catData);
+        globalCategoriesCache = catData;
       }
       
       // Fetch products
@@ -80,6 +87,7 @@ function CatalogContent() {
         
       if (!error && data) {
         setProducts(data as Product[]);
+        globalProductsCache = data as Product[];
       } else {
         console.error('Error fetching products:', error);
       }
@@ -87,8 +95,9 @@ function CatalogContent() {
       // Fetch settings
       const { data: settingsData } = await supabase.from('settings').select('*');
       if (settingsData) {
-        const settingsMap = settingsData.reduce((acc, curr) => ({...acc, [curr.key]: curr.value}), {});
+        const settingsMap = settingsData.reduce((acc, curr: any) => ({...acc, [curr.key]: curr.value}), {});
         setSettings(settingsMap as Record<string, string>);
+        globalSettingsCache = settingsMap as Record<string, string>;
       }
       setIsSettingsLoaded(true);
 

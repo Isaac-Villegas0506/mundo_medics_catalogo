@@ -30,17 +30,29 @@ export default function ProductEditorPage() {
     gallery: [] as string[],
     image_url: '', // Main image, usually gallery[0]
     customization_options: [] as string[],
+    is_set: false,
+    included_products: [] as string[],
   });
+
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [newColorHex, setNewColorHex] = useState('#000000');
   const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
     fetchCategories();
+    fetchAllProducts();
     if (!isNew) {
       fetchProduct();
     }
   }, [params.id]);
+
+  const fetchAllProducts = async () => {
+    const { data } = await supabase.from('products').select('id, name, image_url, color_name');
+    if (data) setAllProducts(data);
+  };
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*').order('order_index');
@@ -64,6 +76,8 @@ export default function ProductEditorPage() {
         gallery: data.gallery || (data.image_url ? [data.image_url] : []),
         image_url: data.image_url || '',
         customization_options: data.customization_options || [],
+        is_set: data.is_set || false,
+        included_products: data.included_products || [],
       });
     }
     setLoading(false);
@@ -216,6 +230,116 @@ export default function ProductEditorPage() {
         
         {/* Left Column: Basic Info */}
         <div className="md:col-span-2 flex flex-col gap-6">
+          {/* SET COMPLETO TOGGLE AND UI */}
+          <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 flex justify-between items-center cursor-pointer" onClick={() => handleChange('is_set', !formData.is_set)}>
+            <div>
+              <h3 className="font-semibold text-[#1a1a1a]">Este producto es un "Set Completo"</h3>
+              <p className="text-sm text-[#888] mt-1">Agrupa varios productos en uno solo (ej. Uniforme completo).</p>
+            </div>
+            <div className={`w-12 h-6 rounded-full relative transition-colors ${formData.is_set ? 'bg-[#1a1a1a]' : 'bg-[#e0e0e0]'}`}>
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.is_set ? 'left-7' : 'left-1'}`} />
+            </div>
+          </div>
+
+          {formData.is_set && (
+            <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#1a1a1a]/10">
+              <h3 className="font-semibold text-[#1a1a1a] mb-5">Productos Incluidos en el Set</h3>
+              
+              {/* Product Selector Dropdown */}
+              <div className="relative mb-5 z-20">
+                <div 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full bg-[#f8f8f6] border border-transparent hover:border-black/10 rounded-xl px-4 py-3 text-sm text-[#555] transition-all cursor-pointer flex justify-between items-center"
+                >
+                  <span>+ Añadir producto al set...</span>
+                  <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                </div>
+
+                {isDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-black/5 z-50 overflow-hidden flex flex-col">
+                      <div className="p-2 border-b border-black/5 relative">
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[16px] text-[#aaa]">search</span>
+                        <input
+                          type="text"
+                          value={productSearch}
+                          onChange={e => setProductSearch(e.target.value)}
+                          placeholder="Buscar producto..."
+                          className="w-full bg-[#f4f2f0] border-none outline-none rounded-lg pl-9 pr-3 py-2 text-sm focus:bg-[#eceae6] transition-colors"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-64 overflow-y-auto no-scrollbar">
+                        {allProducts
+                          .filter(p => p.id !== params.id && !formData.included_products.includes(p.id))
+                          .filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                          .map(p => (
+                          <div 
+                            key={p.id}
+                            onClick={() => {
+                              handleChange('included_products', [...formData.included_products, p.id]);
+                              setIsDropdownOpen(false);
+                              setProductSearch('');
+                            }}
+                            className="px-4 py-3 hover:bg-[#f8f8f6] cursor-pointer transition-colors flex items-center gap-3 border-b border-black/5 last:border-0"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-[#e8e8e4] overflow-hidden flex-shrink-0">
+                              {p.image_url ? (
+                                <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="material-symbols-outlined text-[16px] text-[#aaa] w-full h-full flex items-center justify-center">image</span>
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-[#1a1a1a]">{p.name}</span>
+                              {p.color_name && <span className="text-[11px] text-[#888]">{p.color_name}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Selected Products List */}
+              <div className="flex flex-col gap-2">
+                {formData.included_products.map(prodId => {
+                  const prod = allProducts.find(p => p.id === prodId);
+                  if (!prod) return null;
+                  return (
+                    <div key={prodId} className="flex items-center justify-between p-3 bg-[#f8f8f6] border border-[#ece9e2] rounded-xl group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-[#e8e8e4] overflow-hidden flex-shrink-0 border border-black/5">
+                          {prod.image_url ? (
+                            <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="material-symbols-outlined text-[16px] text-[#aaa] w-full h-full flex items-center justify-center">image</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-[#1a1a1a]">{prod.name}</span>
+                          {prod.color_name && <span className="text-[11px] text-[#888]">{prod.color_name}</span>}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleChange('included_products', formData.included_products.filter(id => id !== prodId))}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-[#aaa] hover:text-[#e57373] hover:bg-white transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                  );
+                })}
+                {formData.included_products.length === 0 && (
+                  <div className="p-4 border-2 border-dashed border-[#ece9e2] rounded-xl text-center text-[#aaa] text-sm">
+                    No has añadido ningún producto al set todavía.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div className="bg-white rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5">
             <h3 className="font-semibold text-[#1a1a1a] mb-5">Información General</h3>
             
