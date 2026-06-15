@@ -16,15 +16,10 @@ interface ProductCardProps {
 export default function ProductCard({ product, index, isFavorite, onToggleFavorite, onClick }: ProductCardProps) {
   return (
     <motion.article
-      layoutId={`product-card-${product.id}`}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 22 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ 
-        opacity: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94], delay: index * 0.05 },
-        y: { type: 'spring', stiffness: 350, damping: 35, delay: index * 0.05 },
-        layout: { type: 'spring', stiffness: 350, damping: 35 }
-      }}
-      whileTap={{ scale: 0.96, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+      transition={{ type: 'spring', stiffness: 320, damping: 30, delay: index * 0.07 }}
+      whileTap={{ scale: 0.97 }}
       className="flex flex-col cursor-pointer group h-full"
       onClick={() => onClick(product)}
     >
@@ -32,7 +27,6 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
       <div className="relative w-full aspect-[3/4] bg-[#eeecea] rounded-[20px] overflow-hidden mb-3 transition-shadow duration-400 group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.10)]">
         {product.image_url ? (
           <motion.img
-            layoutId={`product-image-${product.id}`}
             alt={product.name}
             className="object-cover w-full h-full"
             src={product.image_url}
@@ -56,20 +50,16 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
 
         {/* Favorite button */}
         <motion.button
-          whileTap={{ scale: 0.8 }}
+          whileTap={{ scale: 0.85 }}
           onClick={(e) => onToggleFavorite(e, product.id)}
           className="absolute top-2.5 right-2.5 z-10 w-8 h-8 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-full text-[#aaa] hover:text-[#e57373] transition-colors shadow-sm"
         >
-          <motion.span 
-            key={isFavorite ? 'filled' : 'outline'}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          <span 
             className={`material-symbols-outlined text-[18px] ${isFavorite ? 'text-[#e57373]' : ''}`} 
             style={{ fontVariationSettings: isFavorite ? "'FILL' 1, 'wght' 300" : "'FILL' 0, 'wght' 300" }}
           >
             favorite
-          </motion.span>
+          </span>
         </motion.button>
       </div>
 

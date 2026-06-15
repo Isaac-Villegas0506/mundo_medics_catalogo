@@ -156,12 +156,11 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       {/* Modal Container */}
       <motion.div
         key="modal"
-        layoutId={`product-card-${product.id}`}
         drag="y"
         dragControls={dragControls}
         dragListener={false}
         dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0.02, bottom: 0.8 }}
+        dragElastic={{ top: 0, bottom: 1 }}
         onDragEnd={handleDragEnd}
         className="fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
           bg-[#eeecea] md:bg-white rounded-t-[28px] md:rounded-[28px]
@@ -204,7 +203,6 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               {allImages.length > 0 ? (
                 <>
                   <motion.img
-                    layoutId={`product-image-${product.id}`}
                     style={{ scale: imageScale, opacity: imageOpacity, y: imageY }}
                     alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
                     className="object-contain w-full h-full transition-all duration-500"
