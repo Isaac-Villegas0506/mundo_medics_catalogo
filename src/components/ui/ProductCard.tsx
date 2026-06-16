@@ -24,7 +24,7 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
       onClick={() => onClick(product)}
     >
       {/* Image Card */}
-      <div className="relative w-full aspect-[3/4] bg-[#eeecea] rounded-[20px] overflow-hidden mb-3 transition-shadow duration-400 group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.10)]">
+      <div className="relative w-full aspect-[3/4] bg-[#eeecea] rounded-[20px] overflow-hidden mb-3 border border-black/10 transition-shadow duration-400 group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.10)]">
         {product.image_url ? (
           <motion.img
             alt={product.name}
