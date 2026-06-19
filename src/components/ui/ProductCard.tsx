@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 import { Product } from '@/components/modals/ProductModal';
 import ProductBadges from '@/components/ui/ProductBadges';
 
@@ -16,30 +17,36 @@ interface ProductCardProps {
 export default function ProductCard({ product, index, isFavorite, onToggleFavorite, onClick }: ProductCardProps) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 22 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 30, delay: index * 0.07 }}
-      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 25, delay: index * 0.05 }}
+      whileTap={{ scale: 0.98 }}
       className="flex flex-col cursor-pointer group h-full"
       onClick={() => onClick(product)}
     >
       {/* Image Card */}
-      <div className="relative w-full aspect-[3/4] bg-[#eeecea] rounded-[20px] overflow-hidden mb-3 border border-black/10 transition-shadow duration-400 group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.10)]">
+      <div className="relative w-full aspect-[3/4] bg-white dark:bg-zinc-800 rounded-[18px] overflow-hidden mb-3 border border-black/[0.07] dark:border-white/[0.07] shadow-[0_2px_10px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.3)] transition-shadow duration-300 group-hover:shadow-[0_8px_28px_rgba(0,0,0,0.11)] dark:group-hover:shadow-[0_8px_28px_rgba(0,0,0,0.4)]">
         {product.image_url ? (
-          <motion.img
+          <Image
             alt={product.name}
-            className="object-cover w-full h-full"
+            className="object-contain img-reveal"
             src={product.image_url}
-            initial={{ scale: 1.04, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-            whileHover={{ scale: 1.04 }}
+            fill
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[#bbb] text-xs font-light">Próximamente</span>
+          <div className="absolute inset-0 bg-[#eeecea] dark:bg-zinc-700 flex items-center justify-center">
+            <span className="text-[#c0c0bb] dark:text-zinc-500 text-xs font-light">Próximamente</span>
           </div>
         )}
+
+        {/* Hover overlay sutil */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileHover={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="absolute inset-0 bg-black/[0.04] dark:bg-white/[0.04] pointer-events-none"
+        />
 
         {/* Badges on the image */}
         <ProductBadges
@@ -52,10 +59,10 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
         <motion.button
           whileTap={{ scale: 0.85 }}
           onClick={(e) => onToggleFavorite(e, product.id)}
-          className="absolute top-2.5 right-2.5 z-10 w-8 h-8 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-full text-[#aaa] hover:text-[#e57373] transition-colors shadow-sm"
+          className="absolute top-2.5 right-2.5 z-10 w-8 h-8 flex items-center justify-center bg-white/85 dark:bg-zinc-800/85 backdrop-blur-md rounded-full transition-colors shadow-sm hover:bg-white dark:hover:bg-zinc-700"
         >
-          <span 
-            className={`material-symbols-outlined text-[18px] ${isFavorite ? 'text-[#e57373]' : ''}`} 
+          <span
+            className={`material-symbols-outlined text-[18px] transition-colors ${isFavorite ? 'text-[#e57373]' : 'text-[#999] dark:text-zinc-400'}`}
             style={{ fontVariationSettings: isFavorite ? "'FILL' 1, 'wght' 300" : "'FILL' 0, 'wght' 300" }}
           >
             favorite
@@ -64,8 +71,8 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
       </div>
 
       {/* Text Content */}
-      <div className="flex flex-col flex-1">
-        <h3 className="font-semibold text-sm text-[#1a1a1a] line-clamp-2 leading-snug">
+      <div className="flex flex-col flex-1 px-0.5">
+        <h3 className="font-semibold text-sm text-[#1a1a1a] dark:text-zinc-100 line-clamp-2 leading-snug tracking-[-0.01em]">
           {product.name}
         </h3>
 
@@ -73,37 +80,36 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
         {product.color_hex_codes && product.color_hex_codes.length > 0 ? (
           <div className="flex items-center gap-1 mt-2">
             {product.color_hex_codes.slice(0, 4).map((hex, idx) => (
-              <div 
-                key={idx} 
-                className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-sm" 
-                style={{ backgroundColor: hex }} 
+              <div
+                key={idx}
+                className="w-3.5 h-3.5 rounded-full border border-black/[0.12] dark:border-white/[0.12] shadow-sm flex-shrink-0"
+                style={{ backgroundColor: hex }}
               />
             ))}
             {product.color_hex_codes.length > 4 && (
-              <span className="text-[9px] text-[#888] font-medium ml-0.5">+{product.color_hex_codes.length - 4}</span>
+              <span className="text-[9px] text-[#777] dark:text-zinc-400 font-medium ml-0.5">+{product.color_hex_codes.length - 4}</span>
             )}
             {product.color_name && (
-              <span className="text-[10px] text-[#888] font-normal ml-1 truncate">{product.color_name}</span>
+              <span className="text-[10px] text-[#777] dark:text-zinc-400 font-normal ml-1 truncate">{product.color_name}</span>
             )}
           </div>
         ) : product.color_name ? (
-          <p className="text-[10px] text-[#888] mt-1 font-normal truncate">{product.color_name}</p>
+          <p className="text-[10px] text-[#777] dark:text-zinc-400 mt-1 font-normal truncate">{product.color_name}</p>
         ) : null}
 
         {/* Sizes */}
         {product.sizes && product.sizes.length > 0 && (
-          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          <div className="flex items-center gap-1 mt-2 flex-wrap">
             {product.sizes.slice(0, 4).map((size, idx) => (
-              <span key={idx} className="text-[10px] font-medium px-2 py-0.5 bg-[#f4f2f0] text-[#555] rounded-[6px] border border-black/5">
+              <span key={idx} className="text-[10px] font-medium px-2 py-0.5 bg-[#f2f1ef] dark:bg-zinc-800 text-[#555] dark:text-zinc-300 rounded-[5px] border border-black/[0.06] dark:border-white/[0.06]">
                 {size}
               </span>
             ))}
             {product.sizes.length > 4 && (
-              <span className="text-[9px] font-medium text-[#888]">+{product.sizes.length - 4}</span>
+              <span className="text-[9px] font-medium text-[#777] dark:text-zinc-400">+{product.sizes.length - 4}</span>
             )}
           </div>
         )}
-
       </div>
     </motion.article>
   );

@@ -15,7 +15,7 @@ export default function BottomNav() {
         const { supabase } = await import('@/utils/supabase/client');
         const { data } = await supabase.from('settings').select('value').eq('key', 'whatsapp_number').single();
         if (data?.value) setWhatsappNumber(data.value);
-      } catch (e) {}
+      } catch (e) { }
     };
     fetchSettings();
 
@@ -30,7 +30,7 @@ export default function BottomNav() {
     { icon: 'home', label: 'Inicio', path: '/' },
     { icon: 'grid_view', label: 'Categorías', path: '/categories' },
     { icon: 'favorite', label: 'Guardados', path: '/favorites' },
-    { icon: 'chat_bubble', label: 'Consultas', path: whatsappUrl, badge: true, isExternal: true },
+    { icon: 'chat_bubble', label: 'Consultas', path: whatsappUrl, badge: false, isExternal: true },
   ];
 
   return (
@@ -39,7 +39,7 @@ export default function BottomNav() {
         {tabs.map(item => {
           // Si el item es /, solo es activo si pathname es exactamente /
           const active = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path);
-          
+
           return (
             <motion.button
               key={item.label}

@@ -21,7 +21,7 @@ export default function CategoriesPage() {
           supabase.from('categories').select('*').order('order_index', { ascending: true }),
           supabase.from('products').select('id, image_url')
         ]);
-        
+
         if (catRes.data) {
           const prods = prodRes.data || [];
           const combined = catRes.data.map((c: any) => {
@@ -44,14 +44,14 @@ export default function CategoriesPage() {
   return (
     <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-[80px] min-h-screen font-sans antialiased">
       <TopAppBar />
-      
+
       <main className="pt-6 px-5 max-w-[1200px] mx-auto pb-8">
         <h1 className="text-[26px] font-semibold tracking-tight mb-6 text-[#1a1a1a]">Colecciones</h1>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-[#e8e8e4] rounded-[24px] skeleton-shimmer" />
+              <div key={i} className="aspect-[3/4] bg-[#e8e8e4] dark:bg-zinc-800 rounded-[24px] skeleton-shimmer" />
             ))
           ) : categories.length === 0 ? (
             <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-[#888]">
@@ -69,20 +69,21 @@ export default function CategoriesPage() {
                 className="relative w-full aspect-[3/4] md:aspect-[4/5] rounded-[24px] overflow-hidden group border border-black/5 shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
               >
                 {cat.image_url ? (
-                  <img 
-                    src={cat.image_url} 
-                    alt={cat.name} 
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 bg-white" 
+                  <img
+                    src={cat.image_url}
+                    alt={cat.name}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 bg-white"
                   />
                 ) : (
                   <div className="absolute inset-0 bg-[#e8e8e4] flex items-center justify-center transition-transform duration-700 group-hover:scale-105">
                     <ClothingIcon name={cat.name} icon={cat.icon} className="text-[#bbb] text-[50px]" />
                   </div>
                 )}
-                
+
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-                
+
                 {/* Category Name */}
                 <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col items-start text-left z-10">
                   <span className="font-semibold text-[18px] tracking-tight text-white drop-shadow-sm">{cat.name}</span>

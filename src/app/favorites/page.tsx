@@ -87,10 +87,10 @@ export default function FavoritesPage() {
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <article key={`sk-${i}`} className="flex flex-col">
-                  <div className="w-full aspect-[3/4] bg-[#e8e8e4] rounded-[20px] mb-3 skeleton-shimmer" />
-                  <div className="h-4 w-3/4 bg-[#e8e8e4] rounded-md skeleton-shimmer mb-2" />
-                  <div className="h-3 w-1/2 bg-[#e8e8e4] rounded-md skeleton-shimmer mb-3" />
-                  <div className="h-8 w-24 bg-[#e8e8e4] rounded-xl skeleton-shimmer" />
+                  <div className="w-full aspect-[3/4] bg-[#e8e8e4] dark:bg-zinc-800 rounded-[20px] mb-3 skeleton-shimmer" />
+                  <div className="h-4 w-3/4 bg-[#e8e8e4] dark:bg-zinc-800 rounded-md skeleton-shimmer mb-2" />
+                  <div className="h-3 w-1/2 bg-[#e8e8e4] dark:bg-zinc-800 rounded-md skeleton-shimmer mb-3" />
+                  <div className="h-8 w-24 bg-[#e8e8e4] dark:bg-zinc-800 rounded-xl skeleton-shimmer" />
                 </article>
               ))
             ) : displayProducts.length === 0 ? (

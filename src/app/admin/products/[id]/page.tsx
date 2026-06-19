@@ -192,7 +192,7 @@ export default function ProductEditorPage() {
 
   if (loading) return <div className="p-10 text-center">Cargando producto...</div>;
 
-  const availableTags = ['Nuevo', 'Tendencia', 'Oferta', 'Destacado'];
+  const availableTags = ['Nuevo', 'Tendencia', 'Oferta', 'Destacado', 'Varón', 'Mujer', 'Unisex'];
   const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Única'];
   const availableCustomizations = ['Bordado personalizado', 'Estampado personalizado', 'Grabado láser'];
 

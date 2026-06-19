@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
@@ -26,8 +27,10 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/npm/@flaticon/flaticon-uicons@3.3.0/css/all/all.css"
         />
       </head>
-      <body suppressHydrationWarning className={`${inter.className} min-h-screen bg-background`}>
-        {children}
+      <body className={`${inter.className} min-h-screen bg-background`} suppressHydrationWarning>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

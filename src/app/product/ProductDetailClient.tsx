@@ -48,10 +48,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           .from('products')
           .select('id, name, color_name, image_url')
           .in('id', product.included_products || []);
-        
+
         if (data) {
           // Sort them in the exact order they were added
-          const sorted = [...data].sort((a, b) => 
+          const sorted = [...data].sort((a, b) =>
             (product.included_products?.indexOf(a.id) || 0) - (product.included_products?.indexOf(b.id) || 0)
           );
           setIncludedProductsData(sorted);
@@ -67,7 +67,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       try {
         const { data } = await supabase.from('settings').select('value').eq('key', 'whatsapp_number').maybeSingle();
         if (data?.value) setWhatsappNumber(data.value);
-      } catch (e) {}
+      } catch (e) { }
     };
     fetchSettings();
 
@@ -93,7 +93,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       if (savedFavs.includes(product.id)) {
         setIsFavorite(true);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, [product.id]);
 
   const toggleFavorite = () => {
@@ -108,7 +108,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       localStorage.setItem('favorites', JSON.stringify(newFavs));
       setIsFavorite(!isFavorite);
       window.dispatchEvent(new Event('favoritesUpdated'));
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Build WhatsApp message — send product page URL so WhatsApp shows OG preview
@@ -233,7 +233,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </div>
 
           {/* Description */}
-          <p className="text-[#888] text-sm md:text-base leading-relaxed mb-6 mt-3 font-normal">
+          <p className="text-[#666] text-sm md:text-base leading-relaxed mb-6 mt-3 font-normal">
             {product.description || 'Sin descripción disponible.'}
           </p>
 
@@ -266,7 +266,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                         {item.color_name && <span className="text-xs text-[#888] mt-1 truncate">{item.color_name}</span>}
                       </div>
                     </div>
-                    <Link 
+                    <Link
                       href={`/product?id=${item.id}`}
                       className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-xl text-xs font-semibold hover:bg-[#333] transition-colors active:scale-95 flex-shrink-0"
                     >
@@ -292,9 +292,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   <button
                     key={i}
                     onClick={() => setSelectedColorIndex(i)}
-                    className={`w-9 h-9 md:w-11 md:h-11 rounded-full transition-all hover:scale-110 border border-[#e0e0e0] ${
-                      i === selectedColorIndex ? 'ring-2 ring-[#1a1a1a]/15 ring-offset-2 border-none' : ''
-                    }`}
+                    className={`w-9 h-9 md:w-11 md:h-11 rounded-full transition-all hover:scale-110 border border-[#e0e0e0] ${i === selectedColorIndex ? 'ring-2 ring-[#1a1a1a]/15 ring-offset-2 border-none' : ''
+                      }`}
                     style={{ background: hex }}
                   />
                 ))}
@@ -320,11 +319,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   <button
                     key={s}
                     onClick={() => setSelectedSize(s)}
-                    className={`min-w-[44px] px-3 py-2.5 md:py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 ${
-                      s === selectedSize
+                    className={`min-w-[44px] px-3 py-2.5 md:py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 ${s === selectedSize
                         ? 'bg-[#1a1a1a] text-white shadow-sm'
                         : 'bg-[#f4f2f0] text-[#555] hover:bg-[#eceae6]'
-                    }`}
+                      }`}
                   >
                     {s}
                   </button>
@@ -336,18 +334,18 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
 
 
-              {/* Care info */}
-              {product.care_instructions && (
-                <div className="bg-[#f8f6f2] rounded-2xl p-4 md:p-5 flex items-start gap-3 border border-[#ece9e2] mb-6">
-                  <span className="material-symbols-outlined text-[#bbb] mt-0.5" style={{ fontVariationSettings: "'wght' 300" }}>laundry</span>
-                  <div>
-                    <h4 className="text-sm font-semibold text-[#1a1a1a] mb-1">Cuidados de la prenda</h4>
-                    <p className="text-xs text-[#999] leading-relaxed">
-                      {product.care_instructions}
-                    </p>
-                  </div>
-                </div>
-              )}
+          {/* Care info */}
+          {product.care_instructions && (
+            <div className="bg-[#f8f6f2] rounded-2xl p-4 md:p-5 flex items-start gap-3 border border-[#ece9e2] mb-6">
+              <span className="material-symbols-outlined text-[#bbb] mt-0.5" style={{ fontVariationSettings: "'wght' 300" }}>laundry</span>
+              <div>
+                <h4 className="text-sm font-semibold text-[#1a1a1a] mb-1">Cuidados de la prenda</h4>
+                <p className="text-xs text-[#999] leading-relaxed">
+                  {product.care_instructions}
+                </p>
+              </div>
+            </div>
+          )}
 
         </motion.div>
 

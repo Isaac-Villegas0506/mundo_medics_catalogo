@@ -27,6 +27,21 @@ export const TAG_STYLES: Record<string, { bg: string; text: string; border: stri
     text: 'text-[#6b3fa0]',
     border: 'border-[#6b3fa0]/15',
   },
+  Varón: {
+    bg: 'bg-[#e0f2fe]',
+    text: 'text-[#0284c7]',
+    border: 'border-[#0284c7]/15',
+  },
+  Mujer: {
+    bg: 'bg-[#fce7f3]',
+    text: 'text-[#db2777]',
+    border: 'border-[#db2777]/15',
+  },
+  Unisex: {
+    bg: 'bg-[#f3f4f6]',
+    text: 'text-[#4b5563]',
+    border: 'border-[#4b5563]/15',
+  },
 };
 
 const DEFAULT_STYLE = {
