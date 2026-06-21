@@ -4,46 +4,31 @@ import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, useScroll, useTransform, useDragControls } from 'motion/react';
+import type { PanInfo } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import ProductCard from '@/components/ui/ProductCard';
+import type { Product } from '@/types/product';
 
-export interface Product {
-  id: string;
-  name: string;
-  color_name: string;
-  color_hex_codes: string[];
-  image_url: string | null;
-  gallery?: string[];
-  action_text: string;
-  description: string;
-  care_instructions: string | null;
-  material: string | null;
-  category: string;
-  sizes: string[];
-  tags?: string[];
-  is_featured?: boolean;
-  customization_options?: string[];
-  is_set?: boolean;
-  included_products?: string[];
-}
+export type { Product } from '@/types/product';
 
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: Product | null;
+  whatsappNumber?: string;
 }
 
-export default function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
+export default function ProductModal({ isOpen, onClose, product, whatsappNumber }: ProductModalProps) {
   return (
     <AnimatePresence>
-      {isOpen && product && <ModalContent onClose={onClose} product={product} />}
+      {isOpen && product && <ModalContent onClose={onClose} product={product} initialWhatsappNumber={whatsappNumber} />}
     </AnimatePresence>
   );
 }
 
-function ModalContent({ onClose, product }: { onClose: () => void, product: Product }) {
-  const [whatsappNumber, setWhatsappNumber] = React.useState(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
-  const [includedProductsData, setIncludedProductsData] = React.useState<any[]>([]);
+function ModalContent({ onClose, product, initialWhatsappNumber }: { onClose: () => void, product: Product, initialWhatsappNumber?: string }) {
+  const [whatsappNumber, setWhatsappNumber] = React.useState(initialWhatsappNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
+  const [includedProductsData, setIncludedProductsData] = React.useState<Array<Pick<Product, 'id' | 'name' | 'color_name' | 'image_url'>>>([]);
   const [relatedProductsData, setRelatedProductsData] = React.useState<Product[]>([]);
 
   // Fetch included products if it's a set
@@ -81,19 +66,21 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   }, [product]);
 
   useEffect(() => {
+    if (initialWhatsappNumber) return;
+
     const fetchSettings = async () => {
       try {
         const { supabase } = await import('@/utils/supabase/client');
         const { data } = await supabase.from('settings').select('value').eq('key', 'whatsapp_number').single();
         if (data?.value) setWhatsappNumber(data.value);
-      } catch (e) { }
+      } catch { }
     };
     fetchSettings();
 
     const handleUpdate = () => fetchSettings();
     window.addEventListener('settingsUpdated', handleUpdate);
     return () => window.removeEventListener('settingsUpdated', handleUpdate);
-  }, []);
+  }, [initialWhatsappNumber]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -114,7 +101,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   // Drag controls for the mobile handle
   const dragControls = useDragControls();
 
-  const handleDragEnd = (event: any, info: any) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 100 || info.velocity.y > 400) {
       onClose();
     }
@@ -123,9 +110,14 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   // Interactive states
   const [selectedSize, setSelectedSize] = React.useState<string | null>(product.sizes?.[0] || null);
   const [selectedColorIndex, setSelectedColorIndex] = React.useState<number>(0);
-  const [isFavorite, setIsFavorite] = React.useState(false);
+  const [isFavorite, setIsFavorite] = React.useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('favorites') || '[]').includes(product.id);
+    } catch {
+      return false;
+    }
+  });
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
-  const [showSizeGuide, setShowSizeGuide] = React.useState(false);
   const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = React.useState(false);
 
   // Combine main image and gallery
@@ -157,16 +149,6 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
 
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${buildWhatsappMessage()}`;
 
-  // Load favorites from local storage
-  useEffect(() => {
-    try {
-      const savedFavs = JSON.parse(localStorage.getItem('favorites') || '[]');
-      if (savedFavs.includes(product.id)) {
-        setIsFavorite(true);
-      }
-    } catch (e) { }
-  }, [product.id]);
-
   const toggleFavorite = () => {
     try {
       const savedFavs = JSON.parse(localStorage.getItem('favorites') || '[]');
@@ -179,7 +161,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       localStorage.setItem('favorites', JSON.stringify(newFavs));
       setIsFavorite(!isFavorite);
       window.dispatchEvent(new Event('favoritesUpdated'));
-    } catch (e) { }
+    } catch { }
   };
 
   return (

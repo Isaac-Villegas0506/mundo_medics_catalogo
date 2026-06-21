@@ -1,80 +1,36 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/utils/supabase/client';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
-
-interface Product {
-  id: string;
-  name: string;
-  color_name: string;
-  color_hex_codes: string[];
-  image_url: string | null;
-  gallery?: string[];
-  action_text: string;
-  description: string;
-  care_instructions: string | null;
-  material: string | null;
-  category: string;
-  sizes: string[];
-  tags?: string[];
-  is_featured?: boolean;
-  customization_options?: string[];
-  is_set?: boolean;
-  included_products?: string[];
-}
+import type { Product } from '@/types/product';
 
 interface ProductDetailClientProps {
   product: Product;
+  whatsappNumber: string;
+  initialIncludedProducts: Array<{
+    id: string;
+    name: string;
+    color_name: string | null;
+    image_url: string | null;
+  }>;
 }
 
-export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product, whatsappNumber, initialIncludedProducts }: ProductDetailClientProps) {
   const [selectedSize, setSelectedSize] = useState<string | null>(product.sizes?.[0] || null);
   const [selectedColorIndex, setSelectedColorIndex] = useState<number>(0);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [showSizeGuide, setShowSizeGuide] = useState(false);
-  const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
-  const [includedProductsData, setIncludedProductsData] = useState<any[]>([]);
-
-  // Fetch included products if it's a set
-  useEffect(() => {
-    if (product.is_set && product.included_products && product.included_products.length > 0) {
-      const fetchIncluded = async () => {
-        const { data } = await supabase
-          .from('products')
-          .select('id, name, color_name, image_url')
-          .in('id', product.included_products || []);
-
-        if (data) {
-          // Sort them in the exact order they were added
-          const sorted = [...data].sort((a, b) =>
-            (product.included_products?.indexOf(a.id) || 0) - (product.included_products?.indexOf(b.id) || 0)
-          );
-          setIncludedProductsData(sorted);
-        }
-      };
-      fetchIncluded();
+  const [isFavorite, setIsFavorite] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('favorites') || '[]').includes(product.id);
+    } catch {
+      return false;
     }
-  }, [product]);
-
-  // Fetch WhatsApp number from settings
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data } = await supabase.from('settings').select('value').eq('key', 'whatsapp_number').maybeSingle();
-        if (data?.value) setWhatsappNumber(data.value);
-      } catch (e) { }
-    };
-    fetchSettings();
-
-    const handleUpdate = () => fetchSettings();
-    window.addEventListener('settingsUpdated', handleUpdate);
-    return () => window.removeEventListener('settingsUpdated', handleUpdate);
-  }, []);
+  });
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = useState(false);
+  const includedProductsData = initialIncludedProducts;
 
   // Combine main image and gallery
   const allImages = React.useMemo(() => {
@@ -85,16 +41,6 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     }
     return images;
   }, [product.image_url, product.gallery]);
-
-  // Load favorites from local storage
-  useEffect(() => {
-    try {
-      const savedFavs = JSON.parse(localStorage.getItem('favorites') || '[]');
-      if (savedFavs.includes(product.id)) {
-        setIsFavorite(true);
-      }
-    } catch (e) { }
-  }, [product.id]);
 
   const toggleFavorite = () => {
     try {
@@ -108,7 +54,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       localStorage.setItem('favorites', JSON.stringify(newFavs));
       setIsFavorite(!isFavorite);
       window.dispatchEvent(new Event('favoritesUpdated'));
-    } catch (e) { }
+    } catch { }
   };
 
   // Build WhatsApp message — send product page URL so WhatsApp shows OG preview
@@ -166,14 +112,21 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       {/* Left: Image */}
       <div className="w-full md:w-1/2 md:fixed md:top-0 md:bottom-0 md:left-0 bg-[#eeecea] relative aspect-[4/5] md:aspect-auto md:h-[100dvh] flex items-center justify-center">
         {allImages.length > 0 ? (
-          <motion.img
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            alt={product.name}
-            className="w-full h-full object-contain transition-all duration-500"
-            src={allImages[currentImageIndex]}
-          />
+            className="relative w-full h-full"
+          >
+            <Image
+              alt={product.name}
+              className="object-contain transition-all duration-500"
+              src={allImages[currentImageIndex]}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority
+            />
+          </motion.div>
         ) : (
           <span className="text-[#bbb] font-light">Próximamente</span>
         )}
@@ -254,9 +207,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 {includedProductsData.map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-3 md:p-4 bg-white border border-[#ece9e2] rounded-2xl shadow-sm hover:shadow-md transition-shadow group gap-3">
                     <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
+                      <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                          <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="80px" />
                         ) : (
                           <span className="material-symbols-outlined text-[20px] text-[#aaa] w-full h-full flex items-center justify-center">image</span>
                         )}
