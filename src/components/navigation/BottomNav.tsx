@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { usePathname, useRouter } from 'next/navigation';
 
 interface BottomNavProps {
@@ -12,6 +12,10 @@ export default function BottomNav({ whatsappNumber: initialWhatsappNumber }: Bot
   const pathname = usePathname();
   const router = useRouter();
   const [whatsappNumber, setWhatsappNumber] = React.useState(initialWhatsappNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
+
+  const [isVisible, setIsVisible] = React.useState(true);
+  const lastScrollY = React.useRef(0);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
     if (initialWhatsappNumber) return;
@@ -30,6 +34,48 @@ export default function BottomNav({ whatsappNumber: initialWhatsappNumber }: Bot
     return () => window.removeEventListener('settingsUpdated', handleUpdate);
   }, [initialWhatsappNumber]);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          
+          if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+            setIsVisible(prev => prev ? false : prev);
+          } else if (currentScrollY < lastScrollY.current) {
+            setIsVisible(prev => !prev ? true : prev);
+          }
+          
+          lastScrollY.current = currentScrollY;
+
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          
+          if (currentScrollY > 50) {
+            timeoutRef.current = setTimeout(() => {
+              setIsVisible(prev => prev ? false : prev);
+            }, 3000);
+          } else {
+            setIsVisible(prev => !prev ? true : prev);
+          }
+          
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola,%20tengo%20una%20consulta%20desde%20la%20tienda.`;
 
   const tabs = [
@@ -40,7 +86,9 @@ export default function BottomNav({ whatsappNumber: initialWhatsappNumber }: Bot
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full z-40 pb-safe bg-white/90 backdrop-blur-xl border-t border-black/5 md:hidden">
+    <nav 
+      className={`fixed bottom-0 w-full z-40 pb-safe bg-white/90 backdrop-blur-xl border-t border-black/5 md:hidden transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+    >
       <div className="flex justify-around items-center h-16 px-2">
         {tabs.map(item => {
           // Si el item es /, solo es activo si pathname es exactamente /

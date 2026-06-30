@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'motion/react';
+import { m as motion, AnimatePresence } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import type { Product } from '@/types/product';
 

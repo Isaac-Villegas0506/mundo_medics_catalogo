@@ -2,7 +2,7 @@
 
 import React, { useDeferredValue, useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useSearchParams } from 'next/navigation';
 import type { CategorySummary, Product } from '@/types/product';
 import TopAppBar from '@/components/navigation/TopAppBar';

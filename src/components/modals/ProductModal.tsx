@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence, useScroll, useTransform, useDragControls } from 'motion/react';
+import { m as motion, AnimatePresence, useScroll, useTransform, useDragControls } from 'motion/react';
 import type { PanInfo } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import ProductCard from '@/components/ui/ProductCard';

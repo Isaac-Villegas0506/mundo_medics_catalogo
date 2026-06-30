@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import type { CategoryCardData } from '@/types/product';
 import TopAppBar from '@/components/navigation/TopAppBar';

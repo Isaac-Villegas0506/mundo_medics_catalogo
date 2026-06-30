@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
 
