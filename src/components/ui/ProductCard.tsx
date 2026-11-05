@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import Image from 'next/image';
-import { Product } from '@/components/modals/ProductModal';
+import type { Product } from '@/types/product';
 import ProductBadges from '@/components/ui/ProductBadges';
 
 interface ProductCardProps {
@@ -14,12 +14,14 @@ interface ProductCardProps {
   onClick: (product: Product) => void;
 }
 
-export default function ProductCard({ product, index, isFavorite, onToggleFavorite, onClick }: ProductCardProps) {
+function ProductCard({ product, index, isFavorite, onToggleFavorite, onClick }: ProductCardProps) {
+  const shouldAnimateEntry = index < 12;
+
   return (
     <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 25, delay: index * 0.05 }}
+      initial={shouldAnimateEntry ? { opacity: 0, y: 12 } : false}
+      animate={shouldAnimateEntry ? { opacity: 1, y: 0 } : undefined}
+      transition={{ duration: 0.22, ease: 'easeOut', delay: Math.min(index, 8) * 0.025 }}
       whileTap={{ scale: 0.98 }}
       className="flex flex-col cursor-pointer group h-full"
       onClick={() => onClick(product)}
@@ -114,3 +116,5 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
     </motion.article>
   );
 }
+
+export default React.memo(ProductCard);

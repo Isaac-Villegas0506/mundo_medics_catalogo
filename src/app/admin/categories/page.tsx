@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, Reorder, AnimatePresence } from 'motion/react';
+import { m as motion, Reorder, AnimatePresence } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 
 export default function AdminCategoriesPage() {

@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
-import ProductModal, { Product } from '@/components/modals/ProductModal';
-import { supabase } from '@/utils/supabase/client';
+import dynamic from 'next/dynamic';
+import type { Product } from '@/types/product';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
+
+const ProductModal = dynamic(() => import('@/components/modals/ProductModal'), {
+  ssr: false,
+});
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -15,13 +19,34 @@ export default function FavoritesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  const fetchFavoriteProducts = useCallback(async (favIds: string[]) => {
+    if (favIds.length === 0) {
+      setProducts([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    const { supabase } = await import('@/utils/supabase/client');
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', favIds)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setProducts(data as Product[]);
+    }
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
     const loadFavs = () => {
       try {
         const favs = JSON.parse(localStorage.getItem('favorites') || '[]');
         setFavorites(favs);
         fetchFavoriteProducts(favs);
-      } catch (e) {
+      } catch {
         setIsLoading(false);
       }
     };
@@ -29,27 +54,7 @@ export default function FavoritesPage() {
     
     window.addEventListener('favoritesUpdated', loadFavs);
     return () => window.removeEventListener('favoritesUpdated', loadFavs);
-  }, []);
-
-  const fetchFavoriteProducts = async (favIds: string[]) => {
-    if (favIds.length === 0) {
-      setProducts([]);
-      setIsLoading(false);
-      return;
-    }
-    
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .in('id', favIds)
-      .order('created_at', { ascending: false });
-      
-    if (!error && data) {
-      setProducts(data as Product[]);
-    }
-    setIsLoading(false);
-  };
+  }, [fetchFavoriteProducts]);
 
   const toggleFavorite = (e: React.MouseEvent, productId: string) => {
     e.stopPropagation();

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, Reorder } from 'motion/react';
+import { m as motion, Reorder } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
