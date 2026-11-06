@@ -16,24 +16,40 @@ seguirían siendo alcanzables.
 3. Guarda. Confirma que solo el administrador tenga cuenta:
    **Authentication → Users**. Si hay cuentas que no reconoces, elimínalas.
 
-### 1.2 Aplicar la migración 002 (RLS)
+### 1.2 Aplicar las migraciones (002 RLS + 003 índices)
 
 1. Haz un **respaldo** de la base (Dashboard → Database → Backups, o `pg_dump`).
 2. Prueba primero en el proyecto de **desarrollo**.
-3. Ejecuta `supabase/migrations/002_rls_seguridad.sql` en **SQL Editor**.
+3. Ejecuta el script consolidado `supabase/RUN_ME_SQL.sql` en **SQL Editor**.
+   Incluye la migración 002 (RLS) y la 003 (índices de Fase 4). Es idempotente
+   (usa `IF EXISTS` / `IF NOT EXISTS`), así que se puede correr 2 veces sin error.
 4. Verifica que no haya errores de sintaxis ni políticas duplicadas.
+5. Corre la sección 7 (VERIFICACIÓN) del mismo script y revisa las salidas.
 
 ### 1.3 Verificar que la escritura quedó cerrada
 
-Con la **llave anónima pública** (la que usa el navegador), intenta:
+Estado verificado el **6 de noviembre de 2026** contra el proyecto
+`whsonrlkbmnudwmxpfii` con la llave anónima pública:
+
+| Operación (anon) | Resultado |
+|---|---|
+| `SELECT` products / categories / settings | ✅ OK (lectura pública) |
+| `INSERT` en products | ✅ Bloqueado (código 42501) |
+| `UPDATE` sobre una fila real | ✅ Bloqueado (0 filas afectadas) |
+| `DELETE` sobre una fila real | ✅ Bloqueado (0 filas afectadas) |
+
+Para repetir la comprobación manualmente, desde la consola del navegador de la
+tienda pública (sin sesión):
 
 ```js
-// En la consola del navegador de la tienda pública (sin sesión):
 const { error } = await supabase
   .from('products')
   .insert({ name: 'test', color_name: 'test' });
-// Debe devolver error de RLS (row-level security), no insertar.
+// Debe devolver error de RLS (código 42501), no insertar.
 ```
+
+⚠️ Un `UPDATE`/`DELETE` sobre un **id inexistente** no devuelve error aunque RLS
+lo bloquee (afecta 0 filas). Para probar de verdad hay que usar una fila real.
 
 Si inserta, las políticas no se aplicaron correctamente.
 
