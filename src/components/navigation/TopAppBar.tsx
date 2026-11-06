@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,6 +17,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -40,10 +41,13 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchValue(val);
-    onSearch?.(val);
+    // R2: debounce para no filtrar (y re-renderizar la grilla) en cada tecla.
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => onSearch?.(val), 250);
   };
 
   const handleSearchClose = () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     setIsSearchVisible(false);
     setSearchValue('');
     onSearch?.('');
@@ -127,7 +131,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
                   />
                   {searchValue.length > 0 && (
                     <button
-                      onClick={() => { setSearchValue(''); onSearch?.(''); }}
+                      onClick={() => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); setSearchValue(''); onSearch?.(''); }}
                       className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-[#e0e0e0] dark:bg-zinc-600 hover:bg-[#d0d0d0] dark:hover:bg-zinc-500 transition-colors"
                     >
                       <span className="material-symbols-outlined text-[13px] text-[#555] dark:text-zinc-200">close</span>

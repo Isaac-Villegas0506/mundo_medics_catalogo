@@ -70,31 +70,33 @@ function CatalogContent() {
         setIsLoading(true);
       }
 
-      const { data: catData } = await supabase
-        .from('categories')
-        .select('id, name')
-        .order('order_index', { ascending: true });
+      // R1: las tres consultas van en paralelo en lugar de una detrás de otra.
+      const [catResult, prodResult, settingsResult] = await Promise.all([
+        supabase
+          .from('categories')
+          .select('id, name')
+          .order('order_index', { ascending: true }),
+        supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase.from('settings').select('*'),
+      ]);
 
-      if (catData) {
-        setCategories(catData);
-        globalCategoriesCache = catData;
+      if (catResult.data) {
+        setCategories(catResult.data);
+        globalCategoriesCache = catResult.data;
       }
 
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        setProducts(data as Product[]);
-        globalProductsCache = data as Product[];
+      if (!prodResult.error && prodResult.data) {
+        setProducts(prodResult.data as Product[]);
+        globalProductsCache = prodResult.data as Product[];
       } else {
-        console.error('Error fetching products:', error);
+        console.error('Error fetching products:', prodResult.error);
       }
 
-      const { data: settingsData } = await supabase.from('settings').select('*');
-      if (settingsData) {
-        const settingsMap = settingsData.reduce((acc, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
+      if (settingsResult.data) {
+        const settingsMap = settingsResult.data.reduce((acc, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
         setSettings(settingsMap as Record<string, string>);
         globalSettingsCache = settingsMap as Record<string, string>;
       }
@@ -239,7 +241,7 @@ function CatalogContent() {
               </motion.div>
             ) : (
               <motion.div
-                key={`${activeCategory}-${searchQuery}`}
+                key={activeCategory}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
