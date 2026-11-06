@@ -24,11 +24,21 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
         {product.image_url ? (
           <Image
             alt={product.name}
-            className="object-contain img-reveal"
+            /* Fase 6 (LCP): la primera tarjeta NO lleva `img-reveal`.
+               Esa clase arranca en opacity:0 y anima 400 ms, y el navegador
+               no cuenta el LCP hasta que el elemento es visible. Era el motivo
+               principal del "element render delay" de 1.6 s en Lighthouse. */
+            className={index === 0 ? 'object-contain' : 'object-contain img-reveal'}
             src={product.image_url}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            priority={index === 0}
+            /* Next.js 16 deprecó `priority` en favor de `preload` +
+               `fetchPriority` (ver docs de next/image). Con `priority` el
+               <link rel=preload> salía SIN fetchpriority, así que el LCP
+               competía con el resto de peticiones. */
+            preload={index === 0}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+            loading={index === 0 ? 'eager' : 'lazy'}
           />
         ) : (
           <div className="absolute inset-0 bg-[#eeecea] dark:bg-zinc-700 flex items-center justify-center">

@@ -1,5 +1,3 @@
-import { supabase } from '@/utils/supabase/client';
-
 export type StoreSettings = Record<string, string>;
 
 const TTL_MS = 5 * 60 * 1000; // 5 minutos
@@ -31,6 +29,9 @@ export async function getStoreSettings(force = false): Promise<StoreSettings> {
   }
 
   inFlight = (async () => {
+    // Fase 6: import dinámico para no arrastrar el cliente de Supabase
+    // (auth + realtime) al bundle inicial de las páginas públicas.
+    const { supabase } = await import('@/utils/supabase/client');
     const { data, error } = await supabase.from('settings').select('*');
     if (error || !data) {
       // Si falla, devolvemos lo último bueno que tengamos (o vacío).

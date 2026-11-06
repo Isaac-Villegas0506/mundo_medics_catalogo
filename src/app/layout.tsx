@@ -25,6 +25,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Fase 6: la fuente de iconos se descubre tarde porque está referenciada
+            desde el CSS. Precargarla evita el retraso en el primer pintado de
+            iconos (Lighthouse: "Font display, est savings 340 ms").
+            `font-display: block` se mantiene a propósito: con `swap` se vería el
+            texto de la ligadura ("menu", "search") mientras carga. */}
+        <link
+          rel="preload"
+          href="/fonts/material-symbols-subset.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className={`${inter.className} min-h-screen bg-background`} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <MotionProvider>{children}</MotionProvider>

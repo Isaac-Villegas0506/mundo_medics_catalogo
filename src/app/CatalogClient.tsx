@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductModal, { Product } from '@/components/modals/ProductModal';
 import LocationModal from '@/components/modals/LocationModal';
-import { supabase } from '@/utils/supabase/client';
 import { getStoreSettings } from '@/utils/settingsCache';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
@@ -77,21 +76,33 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
     return () => window.removeEventListener('settingsUpdated', onSettingsUpdated);
   }, []);
 
-  const buildProductsQuery = useCallback(() => {
-    let query = supabase
-      .from('products')
-      .select(CARD_FIELDS, { count: 'exact' })
-      .order('created_at', { ascending: false });
+  /**
+   * Fase 6 (rendimiento): el cliente de Supabase se importa de forma dinámica.
+   *
+   * En la primera visita la portada NO necesita Supabase en el navegador: los
+   * datos llegan renderizados del servidor. Importarlo arriba arrastraba
+   * auth + realtime (~260 KB sin comprimir) al bundle inicial de una página
+   * pública. Solo se descarga cuando el usuario filtra, busca o pide más.
+   */
+  const fetchProductsPage = useCallback(
+    async (from: number) => {
+      const { supabase } = await import('@/utils/supabase/client');
+      let query = supabase
+        .from('products')
+        .select(CARD_FIELDS, { count: 'exact' })
+        .order('created_at', { ascending: false });
 
-    if (activeCategory !== 'Todos') {
-      query = query.eq('category', activeCategory);
-    }
-    const q = searchQuery.trim();
-    if (q) {
-      query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
-    }
-    return query;
-  }, [activeCategory, searchQuery]);
+      if (activeCategory !== 'Todos') {
+        query = query.eq('category', activeCategory);
+      }
+      const q = searchQuery.trim();
+      if (q) {
+        query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
+      }
+      return query.range(from, from + PAGE_SIZE - 1);
+    },
+    [activeCategory, searchQuery]
+  );
 
   // Primera página. Se salta la carga inicial: esos datos ya vienen del servidor.
   const isFirstRun = React.useRef(true);
@@ -104,7 +115,8 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
     (async () => {
       setIsLoading(true);
       setLoadError(false);
-      const { data, count, error } = await buildProductsQuery().range(0, PAGE_SIZE - 1);
+      
+      const { data, count, error } = await fetchProductsPage(0);
       if (cancelled) return;
       if (error) {
         console.error('Error fetching products:', error);
@@ -116,14 +128,15 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
       setIsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [buildProductsQuery, reloadKey]);
+  }, [fetchProductsPage, reloadKey]);
 
   const hasMore = products.length < totalCount;
 
   const loadMore = async () => {
     setIsLoadingMore(true);
     const from = products.length;
-    const { data, error } = await buildProductsQuery().range(from, from + PAGE_SIZE - 1);
+    
+    const { data, error } = await fetchProductsPage(from);
     if (!error && data) {
       setProducts(prev => [...prev, ...(data as Product[])]);
     } else if (error) {
@@ -137,6 +150,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
     setIsModalOpen(true);
     // La tarjeta trae solo los campos básicos; cargamos la ficha completa en paralelo.
     (async () => {
+      const { supabase } = await import('@/utils/supabase/client');
       const { data } = await supabase.from('products').select('*').eq('id', product.id).single();
       if (data) setSelectedProduct(data as Product);
     })();
@@ -274,12 +288,15 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
                 <p className="text-sm">No se encontraron productos.</p>
               </motion.div>
             ) : (
+              /* Fase 6 (LCP): sin `initial={{ opacity: 0 }}`. La grilla
+                 arrancaba invisible y el navegador no registraba el LCP hasta
+                 terminar el fundido; además retrasaba el primer pintado útil.
+                 El cambio de categoría conserva `AnimatePresence` para la
+                 salida, pero la entrada ya es visible de inmediato. */
               <motion.div
                 key={activeCategory}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5"
               >
                 {products.map((product, i) => (

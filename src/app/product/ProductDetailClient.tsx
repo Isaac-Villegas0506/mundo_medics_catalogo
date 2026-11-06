@@ -165,7 +165,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             src={allImages[currentImageIndex]}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
-            priority
+            preload
+            fetchPriority="high"
+            loading="eager"
           />
         ) : (
           <span className="text-[#bbb] font-light">Próximamente</span>

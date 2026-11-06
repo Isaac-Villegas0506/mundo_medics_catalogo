@@ -76,7 +76,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
 
             {/* Logo (Mobile only) */}
             <Link href="/" className="md:hidden flex items-center justify-start cursor-pointer active:scale-95 transition-transform">
-              <Image src="/logomundomedics.png" alt="Mundo Medics Logo" width={120} height={44} className="h-11 w-auto object-contain" priority />
+              <Image src="/logomundomedics.png" alt="Mundo Medics Logo" width={44} height={44} sizes="44px" className="h-11 w-auto object-contain" />
             </Link>
           </div>
 
