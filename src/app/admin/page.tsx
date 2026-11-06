@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
 
@@ -68,11 +67,8 @@ export default function AdminPage() {
           { title: 'Categorías', value: loading ? '...' : totalCategories.toString(), change: 'Registradas', icon: 'category', trend: 'up' },
           { title: 'Variantes (Colores)', value: loading ? '...' : totalColorVariants.toString(), change: 'Disponibles', icon: 'palette', trend: 'up' },
         ].map((metric, i) => (
-          <motion.div 
+          <div 
             key={i}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1, duration: 0.4 }}
             className="bg-white rounded-3xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 flex flex-col justify-between"
           >
             <div className="flex justify-between items-start mb-6">
@@ -93,7 +89,7 @@ export default function AdminPage() {
                 {metric.value}
               </h3>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -101,10 +97,7 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         
         {/* Chart Placeholder (Left) */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3 }}
+        <div
           className="bg-white rounded-3xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 lg:col-span-1 flex flex-col"
         >
           <h3 className="font-semibold text-lg text-[#1a1a1a] mb-6">Productos por Categoría</h3>
@@ -113,14 +106,18 @@ export default function AdminPage() {
               const h = (d.count / maxCount) * 100;
               return (
                 <div key={i} className="flex-1 bg-[#f4f2f0] rounded-t-lg relative group overflow-hidden flex flex-col justify-end" title={`${d.cat}: ${d.count}`}>
-                  <motion.div 
-                    initial={{ height: 0 }}
-                    animate={{ height: `${h}%` }}
-                    transition={{ type: "spring", stiffness: 100, delay: 0.4 + (i * 0.05) }}
-                    className="w-full bg-[#1a1a1a] rounded-t-lg group-hover:bg-[#555] transition-colors cursor-pointer relative" 
+                  {/* Fase 10: la barra crece de 0 a su altura con CSS
+                      (`.mm-grow`), con el mismo retardo escalonado de antes. */}
+                  <div
+                    className="mm-grow w-full bg-[#1a1a1a] rounded-t-lg group-hover:bg-[#555] transition-colors cursor-pointer relative"
+                    style={{
+                      ['--mm-target-height' as string]: `${h}%`,
+                      height: `${h}%`,
+                      animationDelay: `${0.4 + i * 0.05}s`,
+                    }}
                   >
                      <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[#1a1a1a] opacity-0 group-hover:opacity-100">{d.count}</span>
-                  </motion.div>
+                  </div>
                 </div>
               );
             }) : (
@@ -132,13 +129,10 @@ export default function AdminPage() {
               <span key={i} className="truncate px-1 text-center flex-1">{d.cat}</span>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Top Products (Right) */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
+        <div
           className="bg-white rounded-3xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 lg:col-span-2"
         >
           <div className="flex justify-between items-center mb-6">
@@ -155,9 +149,8 @@ export default function AdminPage() {
               <div className="text-center py-10 text-[#888]">No hay productos destacados.</div>
             ) : (
               products.filter(p => p.is_featured).slice(0, 5).map((item, i) => (
-                <motion.div 
+                <div 
                   key={item.id}
-                  whileHover={{ scale: 1.01 }}
                   className="flex items-center gap-4 p-3 rounded-2xl hover:bg-[#f8f8f6] transition-colors cursor-pointer border border-transparent hover:border-black/5"
                 >
                   <div className="w-14 h-14 bg-[#eeecea] rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
@@ -180,11 +173,11 @@ export default function AdminPage() {
                       <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>edit</span>
                     </button>
                   </div>
-                </motion.div>
+                </div>
               ))
             )}
           </div>
-        </motion.div>
+        </div>
 
       </div>
     </main>

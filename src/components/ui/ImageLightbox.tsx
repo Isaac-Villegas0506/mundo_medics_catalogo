@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'motion/react';
 
 interface ImageLightboxProps {
   isOpen: boolean;
@@ -224,14 +223,10 @@ export default function ImageLightbox({
   }, [isOpen, scale, zoomAtPoint]);
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
+        <div
+          className="mm-in fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
           role="dialog"
           aria-modal="true"
           aria-label={`Vista ampliada de ${alt}`}
@@ -328,8 +323,8 @@ export default function ImageLightbox({
               </div>
             </>
           )}
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

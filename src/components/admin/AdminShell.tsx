@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'motion/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
@@ -100,8 +99,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 className={`relative flex flex-col items-center justify-center w-16 h-full transition-colors ${active ? 'text-[#1a1a1a]' : 'text-[#bbb]'}`}
               >
                 {active && (
-                  <motion.div
-                    layoutId="admin-nav-indicator"
+                  <div
                     className="absolute -top-[1px] w-5 h-[2px] bg-[#1a1a1a] rounded-b-full"
                   />
                 )}

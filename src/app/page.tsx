@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import CatalogClient from './CatalogClient';
 import { createPublicClient } from '@/utils/supabase/publicServer';
 import { CARD_FIELDS, PAGE_SIZE } from '@/utils/catalogConstants';
-import type { Product } from '@/components/modals/ProductModal';
+import type { Product } from '@/types/product';
 
 export const metadata: Metadata = {
   title: 'Mundo Medics | Catálogo Digital de Indumentaria Médica',

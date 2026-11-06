@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
-import ProductModal, { Product } from '@/components/modals/ProductModal';
+import ProductModal from '@/components/modals/ProductModal';
+import type { Product } from '@/types/product';
 import { supabase } from '@/utils/supabase/client';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';

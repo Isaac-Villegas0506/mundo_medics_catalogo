@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
@@ -91,12 +90,8 @@ export default function CategoriesPage() {
             </div>
           ) : (
             categories.map((cat, i) => (
-              <motion.button
+              <button
                 key={cat.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, type: 'spring', stiffness: 300, damping: 25 }}
-                whileTap={{ scale: 0.96 }}
                 onClick={() => router.push(`/?category=${encodeURIComponent(cat.name)}`)}
                 className="relative w-full aspect-[3/4] md:aspect-[4/5] rounded-[24px] overflow-hidden group border border-black/5 shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
               >
@@ -126,7 +121,7 @@ export default function CategoriesPage() {
                     Explorar <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                   </span>
                 </div>
-              </motion.button>
+              </button>
             ))
           )}
         </div>

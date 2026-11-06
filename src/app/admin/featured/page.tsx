@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, Reorder, AnimatePresence } from 'motion/react';
+import { Reorder, AnimatePresence } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
 

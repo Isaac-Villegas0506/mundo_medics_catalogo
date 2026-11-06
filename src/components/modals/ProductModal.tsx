@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, useScroll, useTransform, useDragControls } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import ProductCard from '@/components/ui/ProductCard';
 import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
@@ -13,26 +12,12 @@ import { getSelectedColor } from '@/utils/productColor';
 import { useSwipeGallery } from '@/hooks/useSwipeGallery';
 import { buildWhatsappUrl } from '@/utils/whatsapp';
 import ImageLightbox from '@/components/ui/ImageLightbox';
+import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
-export interface Product {
-  id: string;
-  name: string;
-  color_name: string;
-  color_hex_codes: string[];
-  image_url: string | null;
-  gallery?: string[];
-  action_text: string;
-  description: string;
-  care_instructions: string | null;
-  material: string | null;
-  category: string;
-  sizes: string[];
-  tags?: string[];
-  is_featured?: boolean;
-  customization_options?: string[];
-  is_set?: boolean;
-  included_products?: string[];
-}
+// Fase 10: el tipo vive en @/types/product para que las tarjetas no arrastren
+// este módulo (y framer-motion) al bundle inicial. Se re-exporta por compatibilidad.
+export type { Product } from '@/types/product';
+import type { Product } from '@/types/product';
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -41,14 +26,24 @@ interface ProductModalProps {
 }
 
 export default function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
-  return (
-    <AnimatePresence>
-      {isOpen && product && <ModalContent onClose={onClose} product={product} />}
-    </AnimatePresence>
-  );
+  /* Fase 10: `<AnimatePresence>` reemplazado por `useDelayedUnmount`.
+     `closing` indica que debe reproducirse la animación de salida. */
+  const { shouldRender, isLeaving } = useDelayedUnmount(!!isOpen && !!product, 280);
+
+  if (!shouldRender || !product) return null;
+
+  return <ModalContent onClose={onClose} product={product} closing={isLeaving} />;
 }
 
-function ModalContent({ onClose, product }: { onClose: () => void, product: Product }) {
+function ModalContent({
+  onClose,
+  product,
+  closing,
+}: {
+  onClose: () => void;
+  product: Product;
+  closing: boolean;
+}) {
   const router = useRouter();
   const whatsappNumber = useWhatsappNumber();
   const [includedProductsData, setIncludedProductsData] = React.useState<any[]>([]);
@@ -98,20 +93,68 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   }, []);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { scrollY } = useScroll({ container: scrollRef });
 
-  // Parallax and shrink effect for mobile image
-  const imageScale = useTransform(scrollY, [0, 300], [1, 0.75]);
-  const imageOpacity = useTransform(scrollY, [0, 300], [1, 0.2]);
-  const imageY = useTransform(scrollY, [0, 300], [0, 80]);
+  /* Fase 10: el parallax de la imagen (antes useScroll + useTransform de
+     framer-motion) se calcula con el evento scroll nativo. Mismos valores:
+     entre 0 y 300 px de desplazamiento la imagen pasa de escala 1 → 0.75,
+     opacidad 1 → 0.2 y se desplaza 0 → 80 px. */
+  const [parallax, setParallax] = React.useState({ scale: 1, opacity: 1, y: 0 });
 
-  // Drag controls for the mobile handle
-  const dragControls = useDragControls();
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
 
-  const handleDragEnd = (event: any, info: any) => {
-    if (info.offset.y > 100 || info.velocity.y > 400) {
+    let frame = 0;
+    const onScroll = () => {
+      // Se agrupa en un frame para no recalcular en cada píxel.
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const t = Math.min(el.scrollTop / 300, 1); // 0 → 1
+        setParallax({
+          scale: 1 - t * 0.25,
+          opacity: 1 - t * 0.8,
+          y: t * 80,
+        });
+      });
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  /* Fase 10: arrastre del panel desde el asa móvil, con Pointer Events.
+     Antes lo hacía `useDragControls` de framer-motion. Se cierra al bajar más
+     de 100 px o si el gesto es claramente rápido hacia abajo. */
+  const [dragY, setDragY] = React.useState(0);
+  const dragState = useRef<{ startY: number; startAt: number } | null>(null);
+
+  const onDragStart = (e: React.PointerEvent) => {
+    dragState.current = { startY: e.clientY, startAt: Date.now() };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const onDragMove = (e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const dy = Math.max(0, e.clientY - dragState.current.startY);
+    setDragY(dy);
+  };
+
+  const onDragEnd = () => {
+    if (!dragState.current) return;
+    const elapsed = Math.max(Date.now() - dragState.current.startAt, 1);
+    const velocity = dragY / elapsed; // px/ms
+    dragState.current = null;
+
+    if (dragY > 100 || velocity > 0.4) {
       onClose();
+      return;
     }
+    // Vuelve a su sitio (la transición CSS la aplica la clase).
+    setDragY(0);
   };
 
   // Interactive states
@@ -197,55 +240,49 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   return (
     <>
       {/* Backdrop */}
-      <motion.div
-        key="backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.22 }}
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px]"
+      <div
+        className={`fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px] ${closing ? 'mm-out' : 'mm-in'}`}
         onClick={onClose}
       />
 
-      {/* Modal Container */}
-      <motion.div
-        key="modal"
-        drag="y"
-        dragControls={dragControls}
-        dragListener={false}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 1 }}
-        onDragEnd={handleDragEnd}
-        className="fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
+      {/* Modal Container
+          Fase 10: la entrada/salida la hace CSS (mm-in-sheet / mm-out-sheet,
+          antes el spring de framer-motion). El arrastre del asa se gestiona con
+          Pointer Events y se refleja en `translateY(dragY)` con transición CSS. */}
+      <div
+        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
           bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px]
           max-h-[calc(100dvh-24px)] md:max-h-[calc(100dvh-96px)]
           h-[92dvh] md:h-[82dvh]
           w-full md:w-[840px]
           md:-translate-x-1/2 md:-translate-y-1/2
           shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]
-          flex flex-col overflow-hidden"
-        initial={{ y: '100%', opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: '100%', opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+          flex flex-col overflow-hidden ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
+        style={{
+          // El arrastre sólo aplica en móvil; en escritorio el panel está centrado
+          // con translate y no debe moverse.
+          ...(dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: 'none' } : {}),
+        }}
       >
         {/* Drag Handle Area (Mobile only) */}
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-12 z-50 flex justify-center pt-3 md:hidden cursor-grab active:cursor-grabbing"
-          onPointerDown={(e) => dragControls.start(e)}
+          onPointerDown={onDragStart}
+          onPointerMove={onDragMove}
+          onPointerUp={onDragEnd}
+          onPointerCancel={onDragEnd}
           style={{ touchAction: 'none' }}
         >
           <div className="w-10 h-1.5 bg-[#ccc]/80 shadow-sm rounded-full" />
         </div>
 
         {/* Desktop Close Button */}
-        <motion.button
-          whileTap={{ scale: 0.88 }}
+        <button
           onClick={onClose}
-          className="hidden md:flex absolute top-4 right-4 z-50 w-11 h-11 items-center justify-center bg-[#f2f2f0] hover:bg-[#e8e8e4] rounded-full text-[#555] transition-colors"
+          className="hidden md:flex absolute top-4 right-4 z-50 w-11 h-11 items-center justify-center bg-[#f2f2f0] hover:bg-[#e8e8e4] rounded-full text-[#555] transition-colors active:scale-90"
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
-        </motion.button>
+        </button>
 
         {/* Scrollable Container — ocupa el espacio que deja el pie de acciones.
             Fase 7: antes el pie era `absolute` y flotaba sobre el contenido;
@@ -263,9 +300,14 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
             >
               {allImages.length > 0 ? (
                 <>
-                  <motion.button
+                  {/* Fase 10: el parallax ahora lo calcula el handler de scroll
+                      nativo (estado `parallax`) en lugar de useTransform. */}
+                  <button
                     type="button"
-                    style={{ scale: imageScale, opacity: imageOpacity, y: imageY }}
+                    style={{
+                      transform: `scale(${parallax.scale}) translateY(${parallax.y}px)`,
+                      opacity: parallax.opacity,
+                    }}
                     className="relative w-full h-full p-4 md:p-8 cursor-zoom-in"
                     onClick={() => setIsLightboxOpen(true)}
                     aria-label="Ver imagen ampliada"
@@ -288,7 +330,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                     <span className="absolute bottom-8 left-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-[#1a1a1a] shadow-sm md:bottom-8 md:left-8">
                       <span className="material-symbols-outlined text-[18px]">zoom_in</span>
                     </span>
-                  </motion.button>
+                  </button>
 
                   {/* Carousel Controls */}
                   {allImages.length > 1 && (
@@ -361,14 +403,11 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
           </div>
 
           {/* Right: Content */}
-          <motion.div
+          <div
             className="w-full md:w-[55%] flex flex-col bg-white dark:bg-zinc-900 relative z-10 
               rounded-t-[28px] md:rounded-none mt-[-28px] md:mt-0 
               pt-7 md:pt-8 px-5 md:px-6 flex-shrink-0 
-              md:overflow-y-auto md:flex-1 no-scrollbar min-h-0"
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.12, duration: 0.3 }}
+              md:overflow-y-auto md:flex-1 no-scrollbar min-h-0 mm-fade-in-delayed"
           >
             <div className="pb-6 md:pb-8">
               <h2 className="text-[22px] md:text-3xl font-semibold text-[#1a1a1a] dark:text-zinc-100 tracking-tight mb-2 md:mb-3 md:pr-10 leading-snug">
@@ -394,13 +433,12 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                   </span>
                   <div className="flex gap-2.5">
                     {product.color_hex_codes.map((hex, i) => (
-                      <motion.button
+                      <button
                         key={i}
-                        whileTap={{ scale: 0.88 }}
                         onClick={() => setSelectedColorIndex(i)}
                         aria-label={`Color ${hex.toUpperCase()}`}
                         aria-pressed={i === selectedColorIndex}
-                        className={`w-11 h-11 rounded-full border transition-all ${i === selectedColorIndex ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900' : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
+                        className={`mm-tap w-11 h-11 rounded-full border transition-all ${i === selectedColorIndex ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900' : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
                           }`}
                         style={{ background: hex }}
                       />
@@ -424,17 +462,16 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
 
                   <div className="flex gap-2">
                     {product.sizes.map((s) => (
-                      <motion.button
+                      <button
                         key={s}
-                        whileTap={{ scale: 0.9 }}
                         onClick={() => setSelectedSize(s)}
-                        className={`w-11 h-10 rounded-xl text-sm font-semibold transition-all ${s === selectedSize
+                        className={`mm-tap w-11 h-10 rounded-xl text-sm font-semibold transition-all ${s === selectedSize
                             ? 'bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900'
                             : 'bg-[#f2f2f0] dark:bg-zinc-800 text-[#555] dark:text-zinc-300 hover:bg-[#e8e8e4] dark:hover:bg-zinc-700'
                           }`}
                       >
                         {s}
-                      </motion.button>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -523,7 +560,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               )}
 
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Pie de acciones — hermano real del área desplazable (no flotante).
@@ -555,7 +592,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
             </span>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* Visor a pantalla completa con zoom (Fase 8) */}
       <ImageLightbox
@@ -567,43 +604,35 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
         onIndexChange={setCurrentImageIndex}
       />
 
-      {/* Size Guide Modal (Lightbox) */}
-      <AnimatePresence>
-        {isSizeGuideModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4"
-            onClick={() => setIsSizeGuideModalOpen(false)}
-          >
-            <div className="relative flex flex-col items-end max-w-full max-h-[90vh]">
-              <motion.button
-                className="mb-3 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-                onClick={() => setIsSizeGuideModalOpen(false)}
-              >
-                <span className="material-symbols-outlined text-[24px]">close</span>
-              </motion.button>
-              <motion.img
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                src="/medidas1.webp"
-                srcSet="/medidas1.webp 1200w, /medidas1@2x.webp 1800w"
-                sizes="(max-width: 768px) 100vw, 720px"
-                alt="Guía de tallas completa de Mundo Medics"
-                width={1200}
-                height={737}
-                loading="lazy"
-                decoding="async"
-                className="max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Size Guide Modal (Lightbox) — Fase 10: animación con CSS. */}
+      {isSizeGuideModalOpen && (
+        <div
+          className="mm-in fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4"
+          onClick={() => setIsSizeGuideModalOpen(false)}
+        >
+          <div className="relative flex flex-col items-end max-w-full max-h-[90vh]">
+            <button
+              className="mb-3 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors active:scale-90"
+              onClick={() => setIsSizeGuideModalOpen(false)}
+            >
+              <span className="material-symbols-outlined text-[24px]">close</span>
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/medidas1.webp"
+              srcSet="/medidas1.webp 1200w, /medidas1@2x.webp 1800w"
+              sizes="(max-width: 768px) 100vw, 720px"
+              alt="Guía de tallas completa de Mundo Medics"
+              width={1200}
+              height={737}
+              loading="lazy"
+              decoding="async"
+              className="mm-in-pop max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

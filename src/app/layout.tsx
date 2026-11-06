@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { MotionProvider } from "@/components/MotionProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -41,8 +40,14 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} min-h-screen bg-background`} suppressHydrationWarning>
+        {/* Fase 10: se retiró <MotionProvider> del layout raíz.
+            Era lo que obligaba a cargar framer-motion (~227 KB) en la primera
+            visita de cualquier página pública. Ahora el sitio público usa
+            animaciones CSS (globals.css) y `prefers-reduced-motion` se respeta
+            con la regla @media correspondiente, sin JavaScript.
+            El panel de administración sí lo conserva, pero cargado bajo demanda. */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <MotionProvider>{children}</MotionProvider>
+          {children}
         </ThemeProvider>
         {/* Fase 9 (4.5): Vercel Web Analytics.
             Sólo recoge rutas visitadas y métricas agregadas; no usa cookies de

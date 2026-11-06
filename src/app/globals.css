@@ -221,6 +221,259 @@
   }
 }
 
+/* =============================================================================
+   Fase 10 — Animaciones en CSS puro (sustituyen a framer-motion)
+
+   Se replican las mismas animaciones que hacía `motion/react` para eliminar
+   ~227 KB de JavaScript del camino crítico (Lighthouse móvil medía 1200 ms de
+   bootup en ese chunk).
+
+   Cada utilidad reproduce la curva y duración del componente original, así que
+   el comportamiento visual es el mismo.
+   ============================================================================= */
+
+/* ── Entradas y salidas base (reemplazan initial/animate/exit) ─────────────── */
+
+/* fade + desplazamiento vertical suave (modales, tarjetas, secciones) */
+@keyframes mm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mm-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes mm-slide-up {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes mm-slide-down {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+}
+
+/* panel inferior (modal de producto en móvil): sube desde abajo */
+@keyframes mm-sheet-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes mm-sheet-down {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* cortina del buscador: la altura pasa de 0 a auto */
+@keyframes mm-reveal-height {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+/* cajón lateral (menú) */
+@keyframes mm-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes mm-slide-out-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* entrada lateral suave del panel de contenido del modal */
+@keyframes mm-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* escalado (lightbox, badges, zoom) */
+@keyframes mm-pop-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes mm-pop-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* barras de gráfico del panel: crecen desde 0 */
+@keyframes mm-grow-height {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--mm-target-height, 100%);
+  }
+}
+
+@layer utilities {
+  /* Entrada */
+  .mm-in {
+    animation: mm-fade-in 0.28s ease-out both;
+  }
+
+  .mm-in-up {
+    animation: mm-slide-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .mm-in-sheet {
+    animation: mm-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .mm-in-pop {
+    animation: mm-pop-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .mm-in-left {
+    animation: mm-slide-in-left 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Buscador: se despliega con una rejilla de 0fr a 1fr (permite "auto"). */
+  .mm-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.28s ease-out;
+  }
+
+  .mm-collapse > * {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .mm-collapse[data-open='true'] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  /* Rotación del icono de búsqueda ⇄ cerrar */
+  .mm-rotate {
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    display: inline-block;
+  }
+
+  .mm-rotate[data-open='true'] {
+    transform: rotate(45deg);
+  }
+
+  /* Panel de contenido del modal: entra 0.12 s después que el panel, igual que
+     el `transition={{ delay: 0.12 }}` original. */
+  .mm-fade-in-delayed {
+    animation: mm-slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+  }
+
+  /* Botones de categoría: feedback al pulsar (reemplaza whileTap) */
+  .mm-tap {
+    transition: transform 0.12s ease-out;
+  }
+
+  .mm-tap:active {
+    transform: scale(0.93);
+  }
+
+  .mm-tap-soft:active {
+    transform: scale(0.97);
+  }
+}
+
+/* ── Salidas (se aplican mientras el elemento se desmonta) ─────────────────── */
+/* Para que la salida se vea antes de quitar el nodo, los componentes usan el
+   hook `useDelayedUnmount` (ver src/hooks/useDelayedUnmount.ts). */
+
+.mm-out {
+  animation: mm-fade-out 0.2s ease-in both;
+}
+
+.mm-out-down {
+  animation: mm-slide-down 0.2s ease-in both;
+}
+
+.mm-out-sheet {
+  animation: mm-sheet-down 0.24s ease-in both;
+}
+
+.mm-out-pop {
+  animation: mm-pop-out 0.18s ease-in both;
+}
+
+.mm-out-left {
+  animation: mm-slide-out-left 0.24s ease-in both;
+}
+
+/* Gráficos del panel: altura animada con la variable personalizada. */
+.mm-grow {
+  animation: mm-grow-height 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* -----------------------------------------------------------------------------
    Fase 6 (10.4): respetar `prefers-reduced-motion`.
 

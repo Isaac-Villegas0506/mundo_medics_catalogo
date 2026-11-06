@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, Reorder, AnimatePresence } from 'motion/react';
+import { Reorder, AnimatePresence } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
 
@@ -305,7 +305,6 @@ export default function AdminCategoriesPage() {
                   <Reorder.Item
                     key={cat.id}
                     value={cat}
-                    dragListener={!searchTerm.trim()}
                     className={`group flex items-center justify-between p-4 border-b border-[#ece9e2] last:border-none bg-white hover:bg-[#fcfcfb] transition-colors ${!searchTerm.trim() ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
                     <div className="flex items-center gap-4">
@@ -353,17 +352,11 @@ export default function AdminCategoriesPage() {
       {/* Fase 7: modal de confirmación propio (antes era `confirm()`). */}
       <AnimatePresence>
         {deleteModalOpen && categoryToDelete && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
             onClick={() => setDeleteModalOpen(false)}
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+            <div
               className="w-full max-w-[380px] rounded-3xl bg-white p-6 text-center shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
@@ -387,8 +380,8 @@ export default function AdminCategoriesPage() {
                   Eliminar
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </main>

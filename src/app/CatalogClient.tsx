@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import type { Product } from '@/components/modals/ProductModal';
+import type { Product } from '@/types/product';
 import { getStoreSettings } from '@/utils/settingsCache';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
@@ -234,8 +233,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
         {/* Category Chips */}
         <section className="mb-6 -mx-4 px-4 overflow-x-auto no-scrollbar">
           <div className="flex gap-2 w-max pb-1">
-            <motion.button
-              whileTap={{ scale: 0.93 }}
+            <button
               onClick={() => changeCategory('Todos')}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap
                 ${activeCategory === 'Todos'
@@ -244,22 +242,21 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
                 }`}
             >
               Todos
-            </motion.button>
+            </button>
             {categories.map(cat => {
               const active = cat.name === activeCategory;
               return (
-                <motion.button
+                <button
                   key={cat.id}
-                  whileTap={{ scale: 0.93 }}
                   onClick={() => changeCategory(cat.name)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap
+                  className={`mm-tap px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap
                     ${active
                       ? 'bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900'
                       : 'bg-white dark:bg-zinc-800 border border-black/[0.10] dark:border-white/10 text-[#444] dark:text-zinc-300 hover:bg-[#f0f0ee] dark:hover:bg-zinc-700'
                     }`}
                 >
                   {cat.name}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -274,82 +271,56 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
           </p>
         )}
 
-        {/* Product Grid */}
+        {/* Product Grid
+            Fase 10: sin framer-motion. Cada estado entra con `.mm-in` (fade de
+            0.28 s, igual que antes). No hay animación de salida entre estados
+            porque el contenido se sustituye en el mismo instante: el resultado
+            visual es el mismo y se evita el coste de retener nodos. */}
         <section className="relative">
-          <AnimatePresence mode="wait">
-            {isLoading ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5"
+          {isLoading ? (
+            <div className="mm-in grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <article key={`sk-${i}`} className="flex flex-col">
+                  <div className="w-full aspect-[3/4] bg-[#e8e8e4] dark:bg-zinc-800 rounded-[18px] mb-3 skeleton-shimmer" />
+                  <div className="h-4 w-3/4 bg-[#e8e8e4] dark:bg-zinc-800 rounded-md skeleton-shimmer mb-2" />
+                  <div className="h-3 w-1/2 bg-[#e8e8e4] dark:bg-zinc-800 rounded-md skeleton-shimmer mb-3" />
+                  <div className="h-7 w-20 bg-[#e8e8e4] dark:bg-zinc-800 rounded-lg skeleton-shimmer" />
+                </article>
+              ))}
+            </div>
+          ) : loadError ? (
+            <div className="mm-in col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full">
+              <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">wifi_off</span>
+              <p className="text-sm mb-4">No pudimos cargar los productos.</p>
+              <button
+                onClick={() => setReloadKey(k => k + 1)}
+                className="px-5 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold"
               >
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <article key={`sk-${i}`} className="flex flex-col">
-                    <div className="w-full aspect-[3/4] bg-[#e8e8e4] dark:bg-zinc-800 rounded-[18px] mb-3 skeleton-shimmer" />
-                    <div className="h-4 w-3/4 bg-[#e8e8e4] dark:bg-zinc-800 rounded-md skeleton-shimmer mb-2" />
-                    <div className="h-3 w-1/2 bg-[#e8e8e4] dark:bg-zinc-800 rounded-md skeleton-shimmer mb-3" />
-                    <div className="h-7 w-20 bg-[#e8e8e4] dark:bg-zinc-800 rounded-lg skeleton-shimmer" />
-                  </article>
-                ))}
-              </motion.div>
-            ) : loadError ? (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full"
-              >
-                <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">wifi_off</span>
-                <p className="text-sm mb-4">No pudimos cargar los productos.</p>
-                <button
-                  onClick={() => setReloadKey(k => k + 1)}
-                  className="px-5 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold"
-                >
-                  Reintentar
-                </button>
-              </motion.div>
-            ) : products.length === 0 ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full"
-              >
-                <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">search_off</span>
-                <p className="text-sm">No se encontraron productos.</p>
-              </motion.div>
-            ) : (
-              /* Fase 6 (LCP): sin `initial={{ opacity: 0 }}`. La grilla
-                 arrancaba invisible y el navegador no registraba el LCP hasta
-                 terminar el fundido; además retrasaba el primer pintado útil.
-                 El cambio de categoría conserva `AnimatePresence` para la
-                 salida, pero la entrada ya es visible de inmediato. */
-              <motion.div
-                key={activeCategory}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5"
-              >
-                {products.map((product, i) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    index={i}
-                    isFavorite={favorites.includes(product.id)}
-                    onToggleFavorite={toggleFavorite}
-                    onClick={openProductModal}
-                  />
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                Reintentar
+              </button>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="mm-in col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full">
+              <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">search_off</span>
+              <p className="text-sm">No se encontraron productos.</p>
+            </div>
+          ) : (
+            /* Fase 6 (LCP): sin animación de entrada. La grilla arrancaba
+               invisible y el navegador no registraba el LCP hasta terminar el
+               fundido. Aquí se mantiene visible desde el primer frame. */
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+              {products.map((product, i) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  index={i}
+                  isFavorite={favorites.includes(product.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onClick={openProductModal}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Cargar más */}
           {hasMore && !isLoading && (

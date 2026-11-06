@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/utils/supabase/client';
-import { motion, AnimatePresence } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
 import { useBackToCatalog } from '@/hooks/useBackToCatalog';
@@ -267,12 +266,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
       {/* Right: Content — scrollable */}
       <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-nav md:pb-32">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="w-full max-w-[480px] mx-auto md:mx-0"
-        >
+        <div className="mm-in-up w-full max-w-[480px] mx-auto md:mx-0">
 
           {/* Title */}
           <div className="flex justify-between items-start">
@@ -400,7 +394,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             </div>
           )}
 
-        </motion.div>
+        </div>
 
         {/* CTA footer */}
         <footer className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-black/5 p-4 pb-safe z-20 md:relative md:w-auto md:bg-transparent md:backdrop-blur-none md:border-none md:p-0 md:pt-2 md:mt-auto max-w-[480px] md:mx-0">
@@ -424,43 +418,35 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         </footer>
       </div>
 
-      {/* Size Guide Modal (Lightbox) */}
-      <AnimatePresence>
-        {isSizeGuideModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4"
-            onClick={() => setIsSizeGuideModalOpen(false)}
-          >
-            <div className="relative flex flex-col items-end max-w-full max-h-[90vh]">
-              <motion.button
-                className="mb-3 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-                onClick={() => setIsSizeGuideModalOpen(false)}
-              >
-                <span className="material-symbols-outlined text-[24px]">close</span>
-              </motion.button>
-              <motion.img
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                src="/medidas1.webp"
-                srcSet="/medidas1.webp 1200w, /medidas1@2x.webp 1800w"
-                sizes="(max-width: 768px) 100vw, 720px"
-                alt="Guía de tallas completa de Mundo Medics"
-                width={1200}
-                height={737}
-                loading="lazy"
-                decoding="async"
-                className="max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Size Guide Modal (Lightbox) — Fase 10: animación con CSS. */}
+      {isSizeGuideModalOpen && (
+        <div
+          className="mm-in fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4"
+          onClick={() => setIsSizeGuideModalOpen(false)}
+        >
+          <div className="relative flex flex-col items-end max-w-full max-h-[90vh]">
+            <button
+              className="mb-3 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors active:scale-90"
+              onClick={() => setIsSizeGuideModalOpen(false)}
+            >
+              <span className="material-symbols-outlined text-[24px]">close</span>
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/medidas1.webp"
+              srcSet="/medidas1.webp 1200w, /medidas1@2x.webp 1800w"
+              sizes="(max-width: 768px) 100vw, 720px"
+              alt="Guía de tallas completa de Mundo Medics"
+              width={1200}
+              height={737}
+              loading="lazy"
+              decoding="async"
+              className="mm-in-pop max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Visor a pantalla completa con zoom (Fase 8) */}
       <ImageLightbox

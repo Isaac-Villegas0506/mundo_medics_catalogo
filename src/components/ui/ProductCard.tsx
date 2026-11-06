@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Product } from '@/components/modals/ProductModal';
+import type { Product } from '@/types/product';
 import ProductBadges from '@/components/ui/ProductBadges';
 
 interface ProductCardProps {

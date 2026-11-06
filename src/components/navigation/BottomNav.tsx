@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'motion/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
@@ -38,10 +37,7 @@ export default function BottomNav() {
           const inner = (
             <>
               {active && (
-                <motion.div
-                  layoutId="nav-indicator"
-                  className="absolute -top-[1px] w-5 h-[2px] bg-[#1a1a1a] rounded-b-full"
-                />
+                <div className="mm-in absolute -top-[1px] w-5 h-[2px] bg-[#1a1a1a] rounded-b-full" />
               )}
               <span
                 className="material-symbols-outlined text-[23px]"

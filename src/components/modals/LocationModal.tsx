@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'motion/react';
 import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
+import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -11,24 +11,21 @@ interface LocationModalProps {
 
 export default function LocationModal({ isOpen, onClose, settings }: LocationModalProps) {
   const iframeUrl = sanitizeMapEmbedUrl(settings.map_iframe_url || '');
+  /* Fase 10: reemplaza a <AnimatePresence>. Mantiene el nodo montado durante
+     la animación de salida (0.24 s) y luego lo desmonta. */
+  const { shouldRender, isLeaving } = useDelayedUnmount(isOpen, 240);
+
+  if (!shouldRender) return null;
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
-          />
-          <div className="fixed inset-0 pointer-events-none z-[101] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white w-[90vw] max-w-[420px] rounded-[24px] shadow-xl pointer-events-auto overflow-hidden flex flex-col max-h-[90dvh]"
+    <>
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] ${isLeaving ? 'mm-out' : 'mm-in'}`}
+      />
+      <div className="fixed inset-0 pointer-events-none z-[101] flex items-center justify-center p-4">
+            <div
+              className={`bg-white w-[90vw] max-w-[420px] rounded-[24px] shadow-xl pointer-events-auto overflow-hidden flex flex-col max-h-[90dvh] ${isLeaving ? 'mm-out-pop' : 'mm-in-pop'}`}
             >
               {/* Header */}
               <div className="flex justify-between items-center p-4 border-b border-black/5">
@@ -104,10 +101,8 @@ export default function LocationModal({ isOpen, onClose, settings }: LocationMod
                   Ver ruta en Google Maps
                 </a>
               </div>
-            </motion.div>
+            </div>
           </div>
-        </>
-      )}
-    </AnimatePresence>
+    </>
   );
 }

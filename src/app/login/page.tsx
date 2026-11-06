@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 
 type Mode = 'login' | 'reset';
@@ -79,10 +78,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f8f6] font-sans antialiased text-[#1a1a1a] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
+      <div
         className="w-full max-w-[400px] bg-white rounded-[28px] p-8 md:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 relative z-10"
       >
         {/* Brand Header Inside Card */}
@@ -213,9 +209,8 @@ export default function LoginPage() {
             </p>
 
             {/* Submit */}
-            <motion.button
+            <button
               disabled={loading}
-              whileTap={{ scale: 0.98 }}
               className={`w-full flex items-center justify-center gap-2 mt-2 py-4 rounded-2xl text-sm font-semibold transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.08)] ${loading ? 'bg-[#555] text-white/70 cursor-wait' : 'bg-[#1a1a1a] text-white hover:bg-[#333]'}`}
               type="submit"
             >
@@ -227,7 +222,7 @@ export default function LoginPage() {
                   {mode === 'login' ? 'login' : 'send'}
                 </span>
               )}
-            </motion.button>
+            </button>
 
             {mode === 'reset' && (
               <button
@@ -240,7 +235,7 @@ export default function LoginPage() {
             )}
           </form>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { createClient } from '@/utils/supabase/server';
 import AdminShell from '@/components/admin/AdminShell';
+import { MotionProvider } from '@/components/MotionProvider';
 
 /* Fase 8 (12.2): el panel nunca debe aparecer en buscadores. */
 export const metadata: Metadata = {
@@ -64,5 +65,12 @@ export default async function AdminLayout({
     );
   }
 
-  return <AdminShell>{children}</AdminShell>;
+  /* Fase 10: el panel SÍ conserva framer-motion porque usa <Reorder> para
+     arrastrar y ordenar. Al vivir sólo aquí, ese peso no llega nunca al
+     catálogo público. */
+  return (
+    <MotionProvider>
+      <AdminShell>{children}</AdminShell>
+    </MotionProvider>
+  );
 }
