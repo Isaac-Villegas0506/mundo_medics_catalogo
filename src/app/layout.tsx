@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { MotionProvider } from "@/components/MotionProvider";
@@ -43,6 +44,10 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <MotionProvider>{children}</MotionProvider>
         </ThemeProvider>
+        {/* Fase 9 (4.5): Vercel Web Analytics.
+            Sólo recoge rutas visitadas y métricas agregadas; no usa cookies de
+            seguimiento ni datos personales. En local no envía nada. */}
+        <Analytics />
       </body>
     </html>
   );

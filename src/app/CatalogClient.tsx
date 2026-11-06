@@ -3,14 +3,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useRouter } from 'next/navigation';
-import ProductModal, { Product } from '@/components/modals/ProductModal';
-import LocationModal from '@/components/modals/LocationModal';
+import dynamic from 'next/dynamic';
+import type { Product } from '@/components/modals/ProductModal';
 import { getStoreSettings } from '@/utils/settingsCache';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
 import { CARD_FIELDS, PAGE_SIZE } from '@/utils/catalogConstants';
 import { sanitizeSearchTerm } from '@/utils/searchTerm';
+
+/**
+ * Fase 9 (rendimiento): los modales se cargan BAJO DEMANDA.
+ *
+ * ProductModal tiene 17 usos de motion y su propio carrusel; LocationModal otros
+ * 3. Antes viajaban en el bundle inicial de la portada aunque solo se abren al
+ * pulsar una tarjeta o «Dirección». Con `dynamic` se descargan al abrirse.
+ *
+ * Medido con Lighthouse móvil: el chunk de framer-motion + react-dom era el
+ * responsable de ~944 ms de Total Blocking Time.
+ */
+const ProductModal = dynamic(() => import('@/components/modals/ProductModal'), {
+  ssr: false,
+});
+
+const LocationModal = dynamic(() => import('@/components/modals/LocationModal'), {
+  ssr: false,
+});
 
 export interface CatalogInitialData {
   categories: { id: string; name: string }[];
