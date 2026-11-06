@@ -5,6 +5,7 @@ import { supabase } from '@/utils/supabase/client';
 import { validateImageFile } from '@/utils/imageUpload';
 import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
 import { uploadToCloudinary } from '@/utils/cloudinary';
+import { invalidateSettingsCache } from '@/utils/settingsCache';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -68,7 +69,10 @@ export default function AdminSettingsPage() {
         
       if (error) throw error;
       setSaveMessage('Configuración guardada exitosamente.');
-      
+
+      // Invalidar la caché de ajustes para que la tienda pública vea el cambio.
+      invalidateSettingsCache();
+
       // Dispatch an event so the client app can update dynamically
       window.dispatchEvent(new Event('settingsUpdated'));
       

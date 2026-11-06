@@ -1,12 +1,16 @@
 'use client';
 
 import * as React from 'react';
+import { getStoreSettings, invalidateSettingsCache } from '@/utils/settingsCache';
 
 /**
- * Número de WhatsApp de la tienda, leído únicamente de la tabla `settings`
- * (el dueño lo edita en el panel). No hay número falso de respaldo: si no hay
- * número configurado se devuelve cadena vacía y la UI debe deshabilitar el CTA
- * en lugar de abrir un chat a un número equivocado (hallazgo S5).
+ * Número de WhatsApp de la tienda, leído de la configuración pública.
+ * No hay número falso de respaldo: si no hay número configurado se devuelve
+ * cadena vacía y la UI debe deshabilitar el CTA en lugar de abrir un chat a un
+ * número equivocado (hallazgo S5).
+ *
+ * Usa la caché compartida de ajustes (5 min) para no repetir la consulta en
+ * cada tarjeta/modal que monta este hook (Fase 4, 8.6).
  */
 export function useWhatsappNumber(): string {
   const [number, setNumber] = React.useState('');
@@ -14,23 +18,18 @@ export function useWhatsappNumber(): string {
   React.useEffect(() => {
     let active = true;
 
-    const fetchSettings = async () => {
-      try {
-        const { supabase } = await import('@/utils/supabase/client');
-        const { data } = await supabase
-          .from('settings')
-          .select('value')
-          .eq('key', 'whatsapp_number')
-          .single();
-        if (active && data?.value) setNumber(data.value);
-      } catch {
-        // Sin número configurado: se mantiene '' y el CTA queda deshabilitado.
-      }
+    const load = async (force = false) => {
+      const settings = await getStoreSettings(force);
+      if (active) setNumber(settings.whatsapp_number || '');
     };
 
-    fetchSettings();
+    load();
 
-    const handleUpdate = () => fetchSettings();
+    const handleUpdate = () => {
+      // El panel acaba de guardar: invalida y vuelve a leer.
+      invalidateSettingsCache();
+      load(true);
+    };
     window.addEventListener('settingsUpdated', handleUpdate);
     return () => {
       active = false;

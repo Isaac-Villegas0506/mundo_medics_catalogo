@@ -67,12 +67,13 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       fetchIncluded();
     }
 
-    // Fetch related products
+    // Fetch related products (solo los campos de tarjeta, Fase 4 8.2)
     const fetchRelated = async () => {
+      if (!product.category) return;
       const { supabase } = await import('@/utils/supabase/client');
       const { data } = await supabase
         .from('products')
-        .select('*')
+        .select('id, name, category, image_url, color_name, color_hex_codes, sizes, tags, is_featured, is_set')
         .eq('category', product.category)
         .neq('id', product.id)
         .limit(4);
