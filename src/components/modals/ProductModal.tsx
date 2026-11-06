@@ -526,8 +526,14 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                src="/medidas1.svg"
-                alt="Guía de Tallas Completa"
+                src="/medidas1.webp"
+                srcSet="/medidas1.webp 1200w, /medidas1@2x.webp 1800w"
+                sizes="(max-width: 768px) 100vw, 720px"
+                alt="Guía de tallas completa de Mundo Medics"
+                width={1200}
+                height={737}
+                loading="lazy"
+                decoding="async"
                 className="max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
                 onClick={(e) => e.stopPropagation()}
               />
