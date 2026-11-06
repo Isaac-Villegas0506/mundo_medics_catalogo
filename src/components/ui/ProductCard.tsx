@@ -19,7 +19,7 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
     <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 25, delay: index * 0.05 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 25, delay: Math.min(index, 8) * 0.05 }}
       whileTap={{ scale: 0.98 }}
       className="flex flex-col cursor-pointer group h-full"
       onClick={() => onClick(product)}
@@ -33,6 +33,7 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
             src={product.image_url}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            priority={index === 0}
           />
         ) : (
           <div className="absolute inset-0 bg-[#eeecea] dark:bg-zinc-700 flex items-center justify-center">

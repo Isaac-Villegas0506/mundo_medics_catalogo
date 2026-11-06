@@ -17,22 +17,36 @@ export default function CategoriesPage() {
     async function fetchCategories() {
       setIsLoading(true);
       try {
-        const [catRes, prodRes] = await Promise.all([
-          supabase.from('categories').select('*').order('order_index', { ascending: true }),
-          supabase.from('products').select('id, image_url')
-        ]);
+        // Solo las columnas que usa la pantalla (Fase 4, 8.2): antes se traía
+        // `select('*')` de categorías y TODOS los productos solo para la foto.
+        const { data: catData, error } = await supabase
+          .from('categories')
+          .select('id, name, icon, featured_product_id')
+          .order('order_index', { ascending: true });
 
-        if (catRes.data) {
-          const prods = prodRes.data || [];
-          const combined = catRes.data.map((c: any) => {
-            const prod = prods.find((p: any) => p.id === c.featured_product_id);
-            return {
-              ...c,
-              image_url: prod?.image_url || null
-            };
-          });
-          setCategories(combined);
+        if (error) throw error;
+        if (!catData) return;
+
+        // Se piden únicamente las imágenes de las categorías que tienen portada.
+        const featuredIds = catData
+          .map((c) => c.featured_product_id)
+          .filter((id): id is string => Boolean(id));
+
+        let imageById = new Map<string, string | null>();
+        if (featuredIds.length > 0) {
+          const { data: prodData } = await supabase
+            .from('products')
+            .select('id, image_url')
+            .in('id', featuredIds);
+          imageById = new Map((prodData || []).map((p) => [p.id, p.image_url]));
         }
+
+        setCategories(
+          catData.map((c) => ({
+            ...c,
+            image_url: c.featured_product_id ? (imageById.get(c.featured_product_id) ?? null) : null,
+          }))
+        );
       } catch (e) {
         console.error(e);
       }

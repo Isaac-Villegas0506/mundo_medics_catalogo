@@ -1,19 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSearchParams } from 'next/navigation';
 import ProductModal, { Product } from '@/components/modals/ProductModal';
 import LocationModal from '@/components/modals/LocationModal';
 import { supabase } from '@/utils/supabase/client';
+import { getStoreSettings } from '@/utils/settingsCache';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
 
-// Module-level cache to preserve data and scroll position across navigations
-let globalProductsCache: Product[] | null = null;
-let globalCategoriesCache: { id: string, name: string }[] | null = null;
-let globalSettingsCache: Record<string, string> | null = null;
+// Fase 4: la portada ya no descarga todo el catálogo de golpe.
+// Trae solo los campos que muestra la tarjeta y pagina de a bloques.
+const PAGE_SIZE = 16;
+const CARD_FIELDS =
+  'id, name, category, image_url, color_name, color_hex_codes, sizes, tags, is_featured, is_set';
 
 export default function CatalogPage() {
   return (
@@ -30,15 +32,19 @@ function CatalogContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(categoryParam || 'Todos');
-  const [categories, setCategories] = useState<{ id: string, name: string }[]>(globalCategoriesCache || []);
-  const [isLoading, setIsLoading] = useState(!globalProductsCache);
+  const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [products, setProducts] = useState<Product[]>(globalProductsCache || []);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [settings, setSettings] = useState<Record<string, string>>(globalSettingsCache || {});
-  const [isSettingsLoaded, setIsSettingsLoaded] = useState(!!globalSettingsCache);
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
   useEffect(() => {
     const loadFavs = () => {
@@ -64,64 +70,85 @@ function CatalogContent() {
     window.dispatchEvent(new Event('favoritesUpdated'));
   };
 
+  // Categorías y ajustes se cargan una sola vez, en paralelo.
+  // Los ajustes pasan por una caché corta (5 min) para no repetir la consulta
+  // en cada navegación entre portada, favoritos y categorías.
   useEffect(() => {
-    async function fetchData() {
-      if (!globalProductsCache) {
-        setIsLoading(true);
+    async function loadMeta() {
+      const [catResult, settingsMap] = await Promise.all([
+        supabase.from('categories').select('id, name').order('order_index', { ascending: true }),
+        getStoreSettings(),
+      ]);
+
+      if (catResult.data) {
+        setCategories(catResult.data);
       }
-
-      const { data: catData } = await supabase
-        .from('categories')
-        .select('id, name')
-        .order('order_index', { ascending: true });
-
-      if (catData) {
-        setCategories(catData);
-        globalCategoriesCache = catData;
-      }
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        setProducts(data as Product[]);
-        globalProductsCache = data as Product[];
-      } else {
-        console.error('Error fetching products:', error);
-      }
-
-      const { data: settingsData } = await supabase.from('settings').select('*');
-      if (settingsData) {
-        const settingsMap = settingsData.reduce((acc, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
-        setSettings(settingsMap as Record<string, string>);
-        globalSettingsCache = settingsMap as Record<string, string>;
-      }
+      setSettings(settingsMap);
       setIsSettingsLoaded(true);
-      setIsLoading(false);
     }
-
-    fetchData();
+    loadMeta();
   }, []);
+
+  // Query base de productos con filtro de servidor (categoría + búsqueda).
+  const buildProductsQuery = useCallback(() => {
+    let query = supabase
+      .from('products')
+      .select(CARD_FIELDS, { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (activeCategory !== 'Todos') {
+      query = query.eq('category', activeCategory);
+    }
+    const q = searchQuery.trim();
+    if (q) {
+      query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
+    }
+    return query;
+  }, [activeCategory, searchQuery]);
+
+  // Primera página de productos; se re-ejecuta al cambiar categoría o búsqueda.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      setLoadError(false);
+      const { data, count, error } = await buildProductsQuery().range(0, PAGE_SIZE - 1);
+      if (cancelled) return;
+      if (error) {
+        console.error('Error fetching products:', error);
+        setLoadError(true);
+      } else if (data) {
+        setProducts(data as Product[]);
+        if (typeof count === 'number') setTotalCount(count);
+      }
+      setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [buildProductsQuery, reloadKey]);
+
+  const hasMore = products.length < totalCount;
+
+  const loadMore = async () => {
+    setIsLoadingMore(true);
+    const from = products.length;
+    const { data, error } = await buildProductsQuery().range(from, from + PAGE_SIZE - 1);
+    if (!error && data) {
+      setProducts(prev => [...prev, ...(data as Product[])]);
+    } else if (error) {
+      console.error('Error loading more products:', error);
+    }
+    setIsLoadingMore(false);
+  };
 
   const openProductModal = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
+    // La tarjeta trae solo los campos básicos; cargamos la ficha completa en paralelo.
+    (async () => {
+      const { data } = await supabase.from('products').select('*').eq('id', product.id).single();
+      if (data) setSelectedProduct(data as Product);
+    })();
   };
-
-  // Filtro combinado: categoría + búsqueda por nombre
-  const filteredProducts = products
-    .filter(p => activeCategory === 'Todos' || p.category === activeCategory)
-    .filter(p => {
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        p.name.toLowerCase().includes(q) ||
-        (p.category && p.category.toLowerCase().includes(q)) ||
-        (p.color_name && p.color_name.toLowerCase().includes(q))
-      );
-    });
 
   return (
     <div className="bg-[#f8f8f6] dark:bg-zinc-950 text-[#1a1a1a] dark:text-zinc-100 pb-[80px] min-h-screen font-sans antialiased">
@@ -198,9 +225,9 @@ function CatalogContent() {
         {/* Search result label */}
         {searchQuery.trim().length > 0 && !isLoading && (
           <p className="text-sm text-[#777] mb-4">
-            {filteredProducts.length === 0
+            {totalCount === 0
               ? `Sin resultados para "${searchQuery}"`
-              : `${filteredProducts.length} resultado${filteredProducts.length !== 1 ? 's' : ''} para "${searchQuery}"`}
+              : `${totalCount} resultado${totalCount !== 1 ? 's' : ''} para "${searchQuery}"`}
           </p>
         )}
 
@@ -225,7 +252,25 @@ function CatalogContent() {
                   </article>
                 ))}
               </motion.div>
-            ) : filteredProducts.length === 0 ? (
+            ) : loadError ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full"
+              >
+                <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">wifi_off</span>
+                <p className="text-sm mb-4">No pudimos cargar los productos.</p>
+                <button
+                  onClick={() => setReloadKey(k => k + 1)}
+                  className="px-5 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold"
+                >
+                  Reintentar
+                </button>
+              </motion.div>
+            ) : products.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={{ opacity: 0 }}
@@ -235,18 +280,18 @@ function CatalogContent() {
                 className="col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full"
               >
                 <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">search_off</span>
-                <p className="text-sm">No hay productos en esta categoría.</p>
+                <p className="text-sm">No se encontraron productos.</p>
               </motion.div>
             ) : (
               <motion.div
-                key={`${activeCategory}-${searchQuery}`}
+                key={activeCategory}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
                 className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5"
               >
-                {filteredProducts.map((product, i) => (
+                {products.map((product, i) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -259,6 +304,19 @@ function CatalogContent() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Cargar más */}
+          {hasMore && !isLoading && (
+            <div className="flex justify-center mt-8 pb-2">
+              <button
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="px-6 py-3 bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900 rounded-2xl text-sm font-semibold disabled:opacity-60 hover:bg-[#333] dark:hover:bg-zinc-200 transition-colors active:scale-[0.98]"
+              >
+                {isLoadingMore ? 'Cargando…' : 'Ver más productos'}
+              </button>
+            </div>
+          )}
         </section>
       </main>
 

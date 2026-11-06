@@ -100,6 +100,15 @@
     scrollbar-width: none;
   }
 
+  /* Safe area (R13): respeta el notch y la barra de gestos en iOS. */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
   /* Skeleton shimmer animation */
   .skeleton-shimmer {
     background: linear-gradient(90deg, #e8e8e4 25%, #f0f0ec 50%, #e8e8e4 75%);

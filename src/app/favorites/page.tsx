@@ -39,9 +39,10 @@ export default function FavoritesPage() {
     }
     
     setIsLoading(true);
+    // Solo los campos que muestra la tarjeta (Fase 4, 8.2).
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('id, name, category, image_url, color_name, color_hex_codes, sizes, tags, is_featured, is_set')
       .in('id', favIds)
       .order('created_at', { ascending: false });
       
@@ -71,6 +72,11 @@ export default function FavoritesPage() {
   const openProductModal = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
+    // La tarjeta trae campos básicos; se carga la ficha completa en el modal.
+    (async () => {
+      const { data } = await supabase.from('products').select('*').eq('id', product.id).single();
+      if (data) setSelectedProduct(data as Product);
+    })();
   };
 
   const displayProducts = products.filter(p => favorites.includes(p.id));

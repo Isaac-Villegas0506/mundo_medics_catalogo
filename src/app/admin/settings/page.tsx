@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
+import { validateImageFile } from '@/utils/imageUpload';
+import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
+import { uploadToCloudinary } from '@/utils/cloudinary';
+import { invalidateSettingsCache } from '@/utils/settingsCache';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -46,19 +50,12 @@ export default function AdminSettingsPage() {
 
   const handleChange = (key: string, value: string) => {
     let finalValue = value;
-    
-    // Si el usuario pega todo el HTML del iframe, extraemos solo el enlace
+
+    // Si el usuario pega el HTML del iframe, extraemos y validamos solo el enlace.
     if (key === 'map_iframe_url') {
-      if (value.includes('<iframe')) {
-        const match = value.match(/src="([^"]+)"/);
-        if (match) {
-          finalValue = match[1];
-        }
-      }
-      // Limpiar caracteres HTML que rompen Google Maps (ej. &#39;)
-      finalValue = finalValue.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+      finalValue = sanitizeMapEmbedUrl(value);
     }
-    
+
     setSettings(prev => ({ ...prev, [key]: finalValue }));
   };
 
@@ -72,7 +69,10 @@ export default function AdminSettingsPage() {
         
       if (error) throw error;
       setSaveMessage('Configuración guardada exitosamente.');
-      
+
+      // Invalidar la caché de ajustes para que la tienda pública vea el cambio.
+      invalidateSettingsCache();
+
       // Dispatch an event so the client app can update dynamically
       window.dispatchEvent(new Event('settingsUpdated'));
       
@@ -88,25 +88,20 @@ export default function AdminSettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      alert(validationError);
+      e.target.value = '';
+      return;
+    }
+
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `settings_${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('products')
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data: publicData } = supabase.storage
-        .from('products')
-        .getPublicUrl(fileName);
-        
-      handleChange('map_photo_url', publicData.publicUrl);
+      const secureUrl = await uploadToCloudinary(file);
+      handleChange('map_photo_url', secureUrl);
     } catch (e) {
       console.error(e);
-      alert('Error al subir la imagen. Asegúrate de que el bucket "products" exista y permita subidas.');
+      alert('Error al subir la imagen. Intenta de nuevo.');
     } finally {
       setIsUploading(false);
       e.target.value = '';
