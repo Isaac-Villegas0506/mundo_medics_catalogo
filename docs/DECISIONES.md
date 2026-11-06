@@ -14,3 +14,5 @@ Documento generado automáticamente. Se actualiza conforme avanza el desarrollo.
 | DEC-8 | ¿Estadísticas de consultas? | Sí, con tabla propia (vistas y clics a WhatsApp por producto) | 2026-11-06 |
 | DEC-9 | ¿App instalable como PWA? | Sí, implementar PWA como fase final | 2026-11-06 |
 | DEC-10 | Dominio propio y correo admin | Pendiente de decisión del dueño | 2026-11-06 |
+| DEC-11 | ¿Usar `@supabase/ssr` para sesión con cookies? | Sí, instalar `@supabase/ssr` (paquete oficial de Supabase) | 2026-11-06 |
+| DEC-12 | ¿Cómo restringir la escritura en la base (RLS)? | Solo usuarios autenticados (`authenticated`); desactivar el registro público en Supabase | 2026-11-06 |
