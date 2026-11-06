@@ -11,7 +11,7 @@ Archivo vivo. Se actualiza al finalizar cada fase. Última actualización: 6 de 
 | 2 | Cloudinary | ✅ En `main` | `fase-2-cloudinary` |
 | 3 | Velocidad | ✅ En `main` | `fase-3-velocidad` |
 | 4 | Supabase: consultas, paginación y datos | ✅ En `main` (PR abierto) | `fase-4-supabase` |
-| 5 | Next.js y arquitectura de renderizado | — | |
+| 5 | Next.js y arquitectura de renderizado | ✅ Completada | `fase-5-renderizado` |
 | 6 | Diseño visual y fluidez | — | |
 | 7 | Funcionamiento completo de todas las secciones | — | |
 | 8 | Seguridad, SEO y calidad | — | |
@@ -54,6 +54,15 @@ Archivo vivo. Se actualiza al finalizar cada fase. Última actualización: 6 de 
 - `src/utils/settingsCache.ts` (nuevo): caché 5 min + deduplicación de ajustes públicos; invalidación al guardar.
 - `src/hooks/useWhatsappNumber.ts`: usa la caché compartida.
 - `supabase/migrations/003_indices_rendimiento.sql` (nuevo): índices en `products(category)` y `products(created_at)`.
+
+### Fase 5 — Next.js y arquitectura de renderizado
+- `src/app/page.tsx`: ahora es componente de **servidor**; consulta en paralelo y entrega HTML con productos. `revalidate = 60`.
+- `src/app/CatalogClient.tsx` (nuevo): toda la interacción (búsqueda, chips, favoritos, modales, «Ver más»). No repite la primera consulta.
+- `src/utils/supabase/publicServer.ts` (nuevo): cliente Supabase sin cookies para datos públicos.
+- `src/app/loading.tsx` (nuevo): esqueleto de carga real.
+- **Iconos:** Material Symbols pasó de 1.14 MB a un subconjunto local de 36 KB (`public/fonts/material-symbols-subset.woff2`); Flaticon (1.18 MB de CSS + 351 KB de fuente + ~1.08 MB de familias no usadas) se reemplazó por 7 SVG locales en `ClothingIcon.tsx`.
+- `src/app/layout.tsx`: eliminados los dos `<link>` externos.
+- Resultado medido: ≈2.5 MB → ≈36 KB de recursos externos; 0 dominios de terceros en la ruta crítica.
 
 ## Pendientes de Fase 0
 - `src/app/admin/products/[id]/Untitled-1.txt`, `Untitled-2.txt` aún en el árbol.

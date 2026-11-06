@@ -91,7 +91,7 @@ export default function CategoriesPage() {
                   />
                 ) : (
                   <div className="absolute inset-0 bg-[#e8e8e4] flex items-center justify-center transition-transform duration-700 group-hover:scale-105">
-                    <ClothingIcon name={cat.name} icon={cat.icon} className="text-[#bbb] text-[50px]" />
+                    <ClothingIcon name={cat.name} className="w-[50px] h-[50px] text-[#bbb]" />
                   </div>
                 )}
 

@@ -88,6 +88,38 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* ---------------------------------------------------------------------------
+     Fase 5 (9.4): Material Symbols servido en local.
+     Antes se cargaba la fuente completa desde Google Fonts (1.14 MB) más una
+     hoja de estilos remota. Ahora es un subconjunto de 25 KB con SOLO los
+     iconos que usa la app, servido como archivo propio.
+     Si añades un icono nuevo, regenera el subconjunto (ver docs/REPORTE_FASE5.md).
+     --------------------------------------------------------------------------- */
+  @font-face {
+    font-family: 'Material Symbols Outlined';
+    font-style: normal;
+    font-weight: 100 700;
+    font-display: swap;
+    src: url('/fonts/material-symbols-subset.woff2') format('woff2');
+  }
+
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
 }
 
 @layer utilities {
