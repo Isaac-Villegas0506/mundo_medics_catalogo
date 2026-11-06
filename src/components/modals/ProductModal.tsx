@@ -277,8 +277,15 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
-                    {/* Indicador de que la foto se puede ampliar */}
-                    <span className="absolute bottom-5 right-5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-[#1a1a1a] shadow-sm md:bottom-8 md:right-8">
+                    {/* Indicador de que la foto se puede ampliar.
+                        Posición elegida midiendo la zona de imagen del modal:
+                        - Arriba-derecha: ocupado por cerrar y favorito (z-50).
+                        - Abajo-derecha en móvil: tapado por el panel de contenido,
+                          que se superpone 28px (mt-[-28px]).
+                        - Abajo-centro: ocupado por los puntos del carrusel.
+                        Queda abajo-IZQUIERDA, libre, por encima del solapamiento
+                        (bottom-8 = 32px > 28px) en móvil. */}
+                    <span className="absolute bottom-8 left-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-[#1a1a1a] shadow-sm md:bottom-8 md:left-8">
                       <span className="material-symbols-outlined text-[18px]">zoom_in</span>
                     </span>
                   </motion.button>
@@ -302,7 +309,10 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                           <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                         </button>
                       </div>
-                      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
+                      {/* Puntos del carrusel. En móvil van más arriba (bottom-10)
+                          para no quedar bajo el panel de contenido, que se
+                          superpone 28px sobre la imagen. */}
+                      <div className="absolute bottom-10 left-0 right-0 z-10 flex justify-center gap-1.5 md:bottom-4">
                         {allImages.map((_, idx) => (
                           <div
                             key={idx}

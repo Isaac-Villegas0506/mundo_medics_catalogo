@@ -206,7 +206,11 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               fetchPriority="high"
               loading="eager"
             />
-            <span className="absolute bottom-6 right-4 z-10 hidden h-10 w-10 items-center justify-center rounded-full bg-white/85 text-[#1a1a1a] shadow-sm md:flex">
+            {/* Lupa: en móvil baja debajo del header (que ocupa arriba-derecha
+                con el botón de favorito) y a la izquierda de los puntos; en
+                escritorio arriba-derecha, donde no hay nada más.
+                Antes estaba en bottom-6, chocando con los puntos del carrusel. */}
+            <span className="absolute right-4 top-20 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-[#1a1a1a] shadow-sm md:right-6 md:top-6">
               <span className="material-symbols-outlined text-[20px]">zoom_in</span>
             </span>
           </button>
