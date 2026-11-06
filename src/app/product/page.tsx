@@ -28,8 +28,10 @@ export async function generateMetadata(
 
   if (!product) {
     return {
-      title: 'Producto | Mundo Medics',
-      description: 'Catálogo Digital de Indumentaria Médica',
+      title: 'Producto no encontrado | Mundo Medics',
+      description: 'El producto que buscas ya no está disponible.',
+      // Fase 8 (12.2): una URL inexistente no debe indexarse.
+      robots: { index: false, follow: false },
     };
   }
 
@@ -38,12 +40,18 @@ export async function generateMetadata(
   // Use the /api/og route which generates a proper PNG — WhatsApp doesn't support SVG
   const ogImageUrl = `${siteUrl}/api/og?id=${product.id}`;
 
+  const description =
+    product.description ||
+    `${product.name} — indumentaria médica de Mundo Medics. Consulta disponibilidad por WhatsApp.`;
+
   return {
     title: `${product.name} | Mundo Medics`,
-    description: product.description || 'Indumentaria médica de calidad',
+    description,
+    // Fase 8 (12.2): canonical estable para evitar duplicados por `?ref=`.
+    alternates: { canonical: productUrl },
     openGraph: {
       title: `${product.name} | Mundo Medics`,
-      description: product.description || 'Indumentaria médica de calidad',
+      description,
       url: productUrl,
       siteName: 'Mundo Medics',
       images: [
@@ -60,7 +68,7 @@ export async function generateMetadata(
     twitter: {
       card: 'summary_large_image',
       title: `${product.name} | Mundo Medics`,
-      description: product.description || 'Indumentaria médica de calidad',
+      description,
       images: [ogImageUrl],
     },
   };

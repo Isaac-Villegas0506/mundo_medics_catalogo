@@ -11,6 +11,7 @@ import { useBackToCatalog } from '@/hooks/useBackToCatalog';
 import { getSelectedColor } from '@/utils/productColor';
 import { useSwipeGallery } from '@/hooks/useSwipeGallery';
 import { buildWhatsappUrl } from '@/utils/whatsapp';
+import ImageLightbox from '@/components/ui/ImageLightbox';
 
 interface Product {
   id: string;
@@ -46,6 +47,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = useState(false);
+  /* Fase 8: visor a pantalla completa con zoom. */
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const whatsappNumber = useWhatsappNumber();
   const [includedProductsData, setIncludedProductsData] = useState<any[]>([]);
 
@@ -184,18 +187,29 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         {allImages.length > 0 ? (
           /* Fase 6 (10.3): imagen principal con next/image (optimizada y con
              `priority` porque es el LCP de esta vista). Antes era un <img>
-             que descargaba el archivo original completo. */
-          <Image
-            key={allImages[currentImageIndex]}
-            alt={product.name}
-            className="object-contain"
-            src={allImages[currentImageIndex]}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            preload
-            fetchPriority="high"
-            loading="eager"
-          />
+             que descargaba el archivo original completo.
+             Fase 8: al pulsar, se abre el visor con zoom. */
+          <button
+            type="button"
+            onClick={() => setIsLightboxOpen(true)}
+            aria-label="Ver imagen ampliada"
+            className="absolute inset-0 cursor-zoom-in"
+          >
+            <Image
+              key={allImages[currentImageIndex]}
+              alt={product.name}
+              className="object-contain pointer-events-none"
+              src={allImages[currentImageIndex]}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              preload
+              fetchPriority="high"
+              loading="eager"
+            />
+            <span className="absolute bottom-6 right-4 z-10 hidden h-10 w-10 items-center justify-center rounded-full bg-white/85 text-[#1a1a1a] shadow-sm md:flex">
+              <span className="material-symbols-outlined text-[20px]">zoom_in</span>
+            </span>
+          </button>
         ) : (
           <span className="text-[#bbb] font-light">Próximamente</span>
         )}
@@ -443,6 +457,16 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Visor a pantalla completa con zoom (Fase 8) */}
+      <ImageLightbox
+        isOpen={isLightboxOpen}
+        images={allImages}
+        index={currentImageIndex}
+        alt={product.name}
+        onClose={() => setIsLightboxOpen(false)}
+        onIndexChange={setCurrentImageIndex}
+      />
     </div>
   );
 }

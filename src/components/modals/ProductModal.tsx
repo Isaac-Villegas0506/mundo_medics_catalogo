@@ -12,6 +12,7 @@ import { CARD_FIELDS } from '@/utils/catalogConstants';
 import { getSelectedColor } from '@/utils/productColor';
 import { useSwipeGallery } from '@/hooks/useSwipeGallery';
 import { buildWhatsappUrl } from '@/utils/whatsapp';
+import ImageLightbox from '@/components/ui/ImageLightbox';
 
 export interface Product {
   id: string;
@@ -122,6 +123,8 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [showSizeGuide, setShowSizeGuide] = React.useState(false);
   const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = React.useState(false);
+  /* Fase 8: visor a pantalla completa con zoom. */
+  const [isLightboxOpen, setIsLightboxOpen] = React.useState(false);
 
   // Combine main image and gallery
   const allImages = React.useMemo(() => {
@@ -219,7 +222,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
           w-full md:w-[840px]
           md:-translate-x-1/2 md:-translate-y-1/2
           shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]
-          flex flex-col md:flex-row overflow-hidden"
+          flex flex-col overflow-hidden"
         initial={{ y: '100%', opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
@@ -243,10 +246,13 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
         </motion.button>
 
-        {/* Scrollable Container */}
+        {/* Scrollable Container — ocupa el espacio que deja el pie de acciones.
+            Fase 7: antes el pie era `absolute` y flotaba sobre el contenido;
+            por eso los botones tapaban el final de la ficha. Ahora el pie es un
+            hermano real en el flujo flex y este bloque se encoge con `flex-1`. */}
         <div
           ref={scrollRef}
-          className="w-full h-full overflow-y-auto md:overflow-hidden no-scrollbar flex flex-col md:flex-row pb-modal-actions md:pb-0"
+          className="w-full flex-1 min-h-0 overflow-y-auto md:overflow-hidden no-scrollbar flex flex-col md:flex-row"
         >
           {/* Left: Image */}
           <div className="w-full md:w-[45%] aspect-[4/5] md:aspect-auto md:h-full relative flex-shrink-0 md:px-5 md:py-5 md:pr-2.5 z-0">
@@ -256,18 +262,25 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
             >
               {allImages.length > 0 ? (
                 <>
-                  <motion.div
+                  <motion.button
+                    type="button"
                     style={{ scale: imageScale, opacity: imageOpacity, y: imageY }}
-                    className="relative w-full h-full p-4 md:p-8"
+                    className="relative w-full h-full p-4 md:p-8 cursor-zoom-in"
+                    onClick={() => setIsLightboxOpen(true)}
+                    aria-label="Ver imagen ampliada"
                   >
                     <Image
                       alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
-                      className="object-contain transition-all duration-500 img-reveal"
+                      className="object-contain transition-all duration-500 img-reveal pointer-events-none"
                       src={allImages[currentImageIndex]}
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
-                  </motion.div>
+                    {/* Indicador de que la foto se puede ampliar */}
+                    <span className="absolute bottom-5 right-5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-[#1a1a1a] shadow-sm md:bottom-8 md:right-8">
+                      <span className="material-symbols-outlined text-[18px]">zoom_in</span>
+                    </span>
+                  </motion.button>
 
                   {/* Carousel Controls */}
                   {allImages.length > 1 && (
@@ -346,7 +359,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.12, duration: 0.3 }}
           >
-            <div className="pb-8 md:pb-24">
+            <div className="pb-6 md:pb-8">
               <h2 className="text-[22px] md:text-3xl font-semibold text-[#1a1a1a] dark:text-zinc-100 tracking-tight mb-2 md:mb-3 md:pr-10 leading-snug">
                 {product.name}
               </h2>
@@ -502,8 +515,9 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
           </motion.div>
         </div>
 
-        {/* Sticky footer */}
-        <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-[55%] px-5 md:px-6 py-4 pb-safe md:pb-6 border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-3 z-50 rounded-br-[28px]">
+        {/* Pie de acciones — hermano real del área desplazable (no flotante).
+            `shrink-0` impide que se comprima cuando el contenido es largo. */}
+        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-5 md:px-6 py-4 pb-safe md:pb-6 border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-3 z-20">
           <Link
             href={`/product?id=${product.id}`}
             className="flex-1 flex items-center justify-center h-12 bg-[#f2f2f0] dark:bg-zinc-800 text-[#1a1a1a] dark:text-zinc-100 rounded-2xl text-sm font-semibold hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
@@ -529,6 +543,16 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
           )}
         </div>
       </motion.div>
+
+      {/* Visor a pantalla completa con zoom (Fase 8) */}
+      <ImageLightbox
+        isOpen={isLightboxOpen}
+        images={allImages}
+        index={currentImageIndex}
+        alt={product.name}
+        onClose={() => setIsLightboxOpen(false)}
+        onIndexChange={setCurrentImageIndex}
+      />
 
       {/* Size Guide Modal (Lightbox) */}
       <AnimatePresence>

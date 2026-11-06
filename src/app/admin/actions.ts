@@ -23,6 +23,19 @@ export async function revalidateCatalog() {
     return { ok: false as const, reason: 'no-session' };
   }
 
+  /* Fase 8 (3.1): además de la sesión, se exige ser administrador.
+     Si la tabla `admin_users` aún no existe (migración 004 pendiente), se
+     permite revalidar para no bloquear el panel, y se avisa por consola. */
+  const { data: adminRow, error: adminError } = await supabase
+    .from('admin_users')
+    .select('user_id')
+    .eq('user_id', data.user.id)
+    .maybeSingle();
+
+  if (!adminError && !adminRow) {
+    return { ok: false as const, reason: 'not-admin' };
+  }
+
   // Portada: productos, categorías y ajustes (número de WhatsApp, redes…).
   revalidatePath('/', 'page');
   // Detalle: ficha, "productos incluidos" y relacionados.
