@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -8,16 +9,7 @@ interface LocationModalProps {
 }
 
 export default function LocationModal({ isOpen, onClose, settings }: LocationModalProps) {
-  let iframeUrl = settings.map_iframe_url;
-  if (iframeUrl) {
-    if (iframeUrl.includes('<iframe')) {
-      const match = iframeUrl.match(/src="([^"]+)"/);
-      if (match) {
-        iframeUrl = match[1];
-      }
-    }
-    iframeUrl = iframeUrl.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
-  }
+  const iframeUrl = sanitizeMapEmbedUrl(settings.map_iframe_url || '');
 
   return (
     <AnimatePresence>

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
+import { validateImageFile } from '@/utils/imageUpload';
+import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -46,19 +48,12 @@ export default function AdminSettingsPage() {
 
   const handleChange = (key: string, value: string) => {
     let finalValue = value;
-    
-    // Si el usuario pega todo el HTML del iframe, extraemos solo el enlace
+
+    // Si el usuario pega el HTML del iframe, extraemos y validamos solo el enlace.
     if (key === 'map_iframe_url') {
-      if (value.includes('<iframe')) {
-        const match = value.match(/src="([^"]+)"/);
-        if (match) {
-          finalValue = match[1];
-        }
-      }
-      // Limpiar caracteres HTML que rompen Google Maps (ej. &#39;)
-      finalValue = finalValue.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+      finalValue = sanitizeMapEmbedUrl(value);
     }
-    
+
     setSettings(prev => ({ ...prev, [key]: finalValue }));
   };
 
@@ -87,6 +82,13 @@ export default function AdminSettingsPage() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      alert(validationError);
+      e.target.value = '';
+      return;
+    }
 
     setIsUploading(true);
     try {
