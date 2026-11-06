@@ -5,6 +5,7 @@ import { motion, Reorder } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { validateImageFile } from '@/utils/imageUpload';
 
 export default function ProductEditorPage() {
   const router = useRouter();
@@ -123,7 +124,19 @@ export default function ProductEditorPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newFiles = Array.from(files).map(file => ({
+    const selected = Array.from(files);
+
+    // Validar tipo y tamaño antes de subir (S6). Detenemos todo si hay un archivo inválido.
+    for (const file of selected) {
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        alert(validationError);
+        e.target.value = '';
+        return;
+      }
+    }
+
+    const newFiles = selected.map(file => ({
       id: Math.random().toString(36).substring(2, 15),
       file,
       progress: 0,
