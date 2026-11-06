@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { revalidateCatalog } from '@/app/admin/actions';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -63,6 +64,8 @@ export default function AdminProductsPage() {
     const newStatus = currentStatus === 'Disponible' ? 'Oculto' : 'Disponible';
     setProducts(products.map(p => p.id === id ? { ...p, status: newStatus } : p));
     await supabase.from('products').update({ status: newStatus }).eq('id', id);
+    // Fase 7 (11.7): el catálogo público debe reflejar el cambio ya mismo.
+    await revalidateCatalog();
   };
 
   const confirmDeleteProduct = (product: any) => {
@@ -77,6 +80,7 @@ export default function AdminProductsPage() {
     await supabase.from('products').delete().eq('id', productToDelete.id);
     setDeleteModalOpen(false);
     setProductToDelete(null);
+    await revalidateCatalog();
   };
 
   const statusColors: any = {
@@ -244,7 +248,7 @@ export default function AdminProductsPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[28px] p-6 md:p-8 shadow-2xl w-[90%] min-w-[320px] max-w-[400px] border border-white/20 mx-auto flex flex-col items-center text-center"
+              className="bg-white rounded-[28px] p-6 md:p-8 shadow-2xl w-[90%] max-w-[400px] border border-white/20 mx-auto flex flex-col items-center text-center"
             >
               <h3 className="text-xl font-semibold text-[#1a1a1a] mb-2 tracking-tight">Confirmar Eliminación</h3>
               <p className="text-sm text-[#888] leading-relaxed mb-6">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import TopAppBar from '@/components/navigation/TopAppBar';
@@ -12,37 +13,55 @@ export default function CategoriesPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     async function fetchCategories() {
       setIsLoading(true);
       try {
-        const [catRes, prodRes] = await Promise.all([
-          supabase.from('categories').select('*').order('order_index', { ascending: true }),
-          supabase.from('products').select('id, image_url')
-        ]);
+        // Solo las columnas que usa la pantalla (Fase 4, 8.2): antes se traía
+        // `select('*')` de categorías y TODOS los productos solo para la foto.
+        const { data: catData, error } = await supabase
+          .from('categories')
+          .select('id, name, icon, featured_product_id')
+          .order('order_index', { ascending: true });
 
-        if (catRes.data) {
-          const prods = prodRes.data || [];
-          const combined = catRes.data.map((c: any) => {
-            const prod = prods.find((p: any) => p.id === c.featured_product_id);
-            return {
-              ...c,
-              image_url: prod?.image_url || null
-            };
-          });
-          setCategories(combined);
+        if (error) throw error;
+        if (!catData) return;
+
+        // Se piden únicamente las imágenes de las categorías que tienen portada.
+        const featuredIds = catData
+          .map((c) => c.featured_product_id)
+          .filter((id): id is string => Boolean(id));
+
+        let imageById = new Map<string, string | null>();
+        if (featuredIds.length > 0) {
+          const { data: prodData } = await supabase
+            .from('products')
+            .select('id, image_url')
+            .in('id', featuredIds);
+          imageById = new Map((prodData || []).map((p) => [p.id, p.image_url]));
         }
+
+        setCategories(
+          catData.map((c) => ({
+            ...c,
+            image_url: c.featured_product_id ? (imageById.get(c.featured_product_id) ?? null) : null,
+          }))
+        );
+        setLoadError(false);
       } catch (e) {
-        console.error(e);
+        console.error('Error cargando categorías:', e);
+        setLoadError(true);
       }
       setIsLoading(false);
     }
     fetchCategories();
-  }, []);
+  }, [reloadKey]);
 
   return (
-    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-[80px] min-h-screen font-sans antialiased">
+    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-nav min-h-screen font-sans antialiased">
       <TopAppBar />
 
       <main className="pt-6 px-5 max-w-[1200px] mx-auto pb-8">
@@ -53,6 +72,19 @@ export default function CategoriesPage() {
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="aspect-[3/4] bg-[#e8e8e4] dark:bg-zinc-800 rounded-[24px] skeleton-shimmer" />
             ))
+          ) : loadError ? (
+            <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-[#888]">
+              <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">
+                wifi_off
+              </span>
+              <p className="text-sm mb-4">No pudimos cargar las colecciones.</p>
+              <button
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="px-5 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold"
+              >
+                Reintentar
+              </button>
+            </div>
           ) : categories.length === 0 ? (
             <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-[#888]">
               No hay categorías disponibles.
@@ -69,15 +101,18 @@ export default function CategoriesPage() {
                 className="relative w-full aspect-[3/4] md:aspect-[4/5] rounded-[24px] overflow-hidden group border border-black/5 shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
               >
                 {cat.image_url ? (
-                  <img
+                  /* Fase 6 (10.3): next/image con `sizes` para que el CDN
+                     entregue el tamaño correcto en vez de la imagen original. */
+                  <Image
                     src={cat.image_url}
                     alt={cat.name}
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 bg-white"
+                    fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-105 bg-white"
                   />
                 ) : (
                   <div className="absolute inset-0 bg-[#e8e8e4] flex items-center justify-center transition-transform duration-700 group-hover:scale-105">
-                    <ClothingIcon name={cat.name} icon={cat.icon} className="text-[#bbb] text-[50px]" />
+                    <ClothingIcon name={cat.name} className="w-[50px] h-[50px] text-[#bbb]" />
                   </div>
                 )}
 

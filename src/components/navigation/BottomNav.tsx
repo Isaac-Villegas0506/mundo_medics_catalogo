@@ -3,28 +3,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const [whatsappNumber, setWhatsappNumber] = React.useState(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
+  const whatsappNumber = useWhatsappNumber();
 
-  React.useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { supabase } = await import('@/utils/supabase/client');
-        const { data } = await supabase.from('settings').select('value').eq('key', 'whatsapp_number').single();
-        if (data?.value) setWhatsappNumber(data.value);
-      } catch (e) { }
-    };
-    fetchSettings();
-
-    const handleUpdate = () => fetchSettings();
-    window.addEventListener('settingsUpdated', handleUpdate);
-    return () => window.removeEventListener('settingsUpdated', handleUpdate);
-  }, []);
-
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola,%20tengo%20una%20consulta%20desde%20la%20tienda.`;
+  const whatsappUrl = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}?text=Hola,%20tengo%20una%20consulta%20desde%20la%20tienda.`
+    : '';
 
   const tabs = [
     { icon: 'home', label: 'Inicio', path: '/' },
@@ -34,7 +22,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full z-40 pb-safe bg-white/90 backdrop-blur-xl border-t border-black/5 md:hidden">
+    <nav className="fixed bottom-0 w-full z-40 pb-safe bg-white/95 border-t border-black/5 md:hidden">
       <div className="flex justify-around items-center h-16 px-2">
         {tabs.map(item => {
           // Si el item es /, solo es activo si pathname es exactamente /
@@ -46,6 +34,7 @@ export default function BottomNav() {
               whileTap={{ scale: 0.88 }}
               onClick={() => {
                 if (item.isExternal) {
+                  if (!item.path) return; // Sin número configurado: no abrir WhatsApp.
                   window.open(item.path, '_blank', 'noopener,noreferrer');
                 } else {
                   router.push(item.path);
