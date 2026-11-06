@@ -16,7 +16,7 @@ Archivo vivo. Se actualiza al finalizar cada fase. Última actualización: 6 de 
 | 5 | Next.js y arquitectura de renderizado | ✅ Completada | `fase-5-renderizado` |
 | 6 | Diseño visual y fluidez | ✅ Completada | `fase-6-diseno` |
 | — | Optimización Lighthouse (LCP, logo, bundle, WebP) | ✅ Completada | `fase-6-diseno` |
-| 7 | Funcionamiento completo de todas las secciones | ⏳ Pendiente | |
+| 7 | Funcionamiento completo de todas las secciones | ✅ Completada | `fase-7-funcionamiento` |
 | 8 | Seguridad, SEO y calidad | ⏳ Pendiente | |
 | 9 | Pruebas de rendimiento y publicación | ⏳ Pendiente | |
 | 10 | Mejoras futuras y decisiones opcionales | ⏳ Pendiente | |

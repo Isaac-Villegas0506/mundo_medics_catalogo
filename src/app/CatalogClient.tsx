@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useRouter } from 'next/navigation';
 import ProductModal, { Product } from '@/components/modals/ProductModal';
 import LocationModal from '@/components/modals/LocationModal';
 import { getStoreSettings } from '@/utils/settingsCache';
@@ -9,6 +10,7 @@ import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
 import { CARD_FIELDS, PAGE_SIZE } from '@/utils/catalogConstants';
+import { sanitizeSearchTerm } from '@/utils/searchTerm';
 
 export interface CatalogInitialData {
   categories: { id: string; name: string }[];
@@ -24,6 +26,7 @@ export interface CatalogInitialData {
  * servidor, así que no hay pantalla vacía ni esqueleto en la primera visita.
  */
 export default function CatalogClient({ initial }: { initial: CatalogInitialData }) {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(initial.activeCategory);
@@ -40,6 +43,23 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>(initial.settings);
+
+  /**
+   * Fase 7 (11.2): el filtro de categoría queda reflejado en la URL para que se
+   * pueda compartir y para que el botón «atrás» del navegador funcione.
+   * `scroll: false` evita que la página salte arriba al cambiar de chip.
+   */
+  const changeCategory = (name: string) => {
+    setActiveCategory(name);
+    const params = new URLSearchParams(window.location.search);
+    if (name === 'Todos') {
+      params.delete('category');
+    } else {
+      params.set('category', name);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : '/', { scroll: false });
+  };
 
   // Los favoritos viven en localStorage, así que solo existen en el cliente.
   useEffect(() => {
@@ -95,7 +115,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
       if (activeCategory !== 'Todos') {
         query = query.eq('category', activeCategory);
       }
-      const q = searchQuery.trim();
+      const q = sanitizeSearchTerm(searchQuery);
       if (q) {
         query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
       }
@@ -198,7 +218,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
           <div className="flex gap-2 w-max pb-1">
             <motion.button
               whileTap={{ scale: 0.93 }}
-              onClick={() => setActiveCategory('Todos')}
+              onClick={() => changeCategory('Todos')}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap
                 ${activeCategory === 'Todos'
                   ? 'bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900'
@@ -213,7 +233,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
                 <motion.button
                   key={cat.id}
                   whileTap={{ scale: 0.93 }}
-                  onClick={() => setActiveCategory(cat.name)}
+                  onClick={() => changeCategory(cat.name)}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap
                     ${active
                       ? 'bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900'

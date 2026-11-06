@@ -24,8 +24,13 @@ async function getInitialData(category?: string) {
     .select(CARD_FIELDS, { count: 'exact' })
     .order('created_at', { ascending: false });
 
-  if (category && category !== 'Todos') {
-    productsQuery = productsQuery.eq('category', category);
+  /* Fase 7 (11.2): el valor viene de `?category=`, que cualquiera puede
+     manipular. `.eq()` escapa el valor, pero se acota la longitud y se recortan
+     los espacios para evitar consultas absurdas. */
+  const safeCategory = typeof category === 'string' ? category.trim().slice(0, 80) : '';
+
+  if (safeCategory && safeCategory !== 'Todos') {
+    productsQuery = productsQuery.eq('category', safeCategory);
   }
 
   // Las tres consultas van en paralelo (R1 de la Fase 3).
@@ -45,7 +50,7 @@ async function getInitialData(category?: string) {
     settings,
     products: (prodResult.data || []) as unknown as Product[],
     totalCount: prodResult.count ?? 0,
-    activeCategory: category && category !== 'Todos' ? category : 'Todos',
+    activeCategory: safeCategory && safeCategory !== 'Todos' ? safeCategory : 'Todos',
   };
 }
 

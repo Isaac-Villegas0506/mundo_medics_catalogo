@@ -13,6 +13,8 @@ export default function CategoriesPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -48,13 +50,15 @@ export default function CategoriesPage() {
             image_url: c.featured_product_id ? (imageById.get(c.featured_product_id) ?? null) : null,
           }))
         );
+        setLoadError(false);
       } catch (e) {
-        console.error(e);
+        console.error('Error cargando categorías:', e);
+        setLoadError(true);
       }
       setIsLoading(false);
     }
     fetchCategories();
-  }, []);
+  }, [reloadKey]);
 
   return (
     <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-nav min-h-screen font-sans antialiased">
@@ -68,6 +72,19 @@ export default function CategoriesPage() {
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="aspect-[3/4] bg-[#e8e8e4] dark:bg-zinc-800 rounded-[24px] skeleton-shimmer" />
             ))
+          ) : loadError ? (
+            <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-[#888]">
+              <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">
+                wifi_off
+              </span>
+              <p className="text-sm mb-4">No pudimos cargar las colecciones.</p>
+              <button
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="px-5 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold"
+              >
+                Reintentar
+              </button>
+            </div>
           ) : categories.length === 0 ? (
             <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-[#888]">
               No hay categorías disponibles.

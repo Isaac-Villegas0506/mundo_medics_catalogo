@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ProductDetailClient from './ProductDetailClient';
 
@@ -72,25 +72,16 @@ export default async function ProductDetailPage(
   const { id } = await searchParams;
   const product = id ? await getProduct(id) : null;
 
+  /* Fase 7 (11.5): un producto inexistente (o una URL sin `id`) responde 404.
+     Antes se renderizaba el mensaje con estado 200.
+
+     Nota sobre el status: cuando la ruta hace streaming (con <Suspense>) Next
+     responde 200 e inyecta `<meta name="robots" content="noindex">`. Para tener
+     el 404 real se renderiza sin Suspense: el producto ya viene resuelto del
+     servidor, así que no había nada que esperar. */
   if (!product) {
-    return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#f8f8f6] px-5 text-center">
-        <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">Producto no encontrado</h1>
-        <p className="text-[#888] mb-6">El producto que buscas ya no existe o fue ocultado.</p>
-        <a href="/" className="px-6 py-3 bg-[#1a1a1a] text-white rounded-xl font-semibold">
-          Volver al catálogo
-        </a>
-      </div>
-    );
+    notFound();
   }
 
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f8f6]">
-        <div className="w-8 h-8 border-4 border-[#1a1a1a] border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
-      <ProductDetailClient product={product} />
-    </Suspense>
-  );
+  return <ProductDetailClient product={product} />;
 }
