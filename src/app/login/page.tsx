@@ -18,12 +18,15 @@ export default function LoginPage() {
       email,
       password,
     });
-    
+
     if (error) {
       alert('Error: ' + error.message);
       setLoading(false);
     } else {
-      router.push('/admin');
+      // Volver a la ruta que pidió autenticación (p.ej. /admin/products) si existe.
+      const next = new URLSearchParams(window.location.search).get('next');
+      router.replace(next && next.startsWith('/admin') ? next : '/admin');
+      router.refresh();
     }
   };
   
