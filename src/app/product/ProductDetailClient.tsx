@@ -7,6 +7,10 @@ import { supabase } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
+import { useBackToCatalog } from '@/hooks/useBackToCatalog';
+import { getSelectedColor } from '@/utils/productColor';
+import { useSwipeGallery } from '@/hooks/useSwipeGallery';
+import { buildWhatsappUrl } from '@/utils/whatsapp';
 
 interface Product {
   id: string;
@@ -33,8 +37,11 @@ interface ProductDetailClientProps {
 }
 
 export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+  const goBack = useBackToCatalog();
   const [selectedSize, setSelectedSize] = useState<string | null>(product.sizes?.[0] || null);
   const [selectedColorIndex, setSelectedColorIndex] = useState<number>(0);
+  /* Fase 7 (1.6): el color que se muestra y se envía por WhatsApp. */
+  const selectedColor = getSelectedColor(product.color_hex_codes, product.color_name, selectedColorIndex);
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
@@ -73,6 +80,17 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     return images;
   }, [product.image_url, product.gallery]);
 
+  /* Fase 7 (1.4): deslizar el dedo para cambiar de imagen (sin librerías). */
+  const goNextImage = React.useCallback(
+    () => setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1)),
+    [allImages.length]
+  );
+  const goPrevImage = React.useCallback(
+    () => setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1)),
+    [allImages.length]
+  );
+  const swipeHandlers = useSwipeGallery(goNextImage, goPrevImage, allImages.length > 1);
+
   // Load favorites from local storage
   useEffect(() => {
     try {
@@ -107,33 +125,38 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       if (selectedSize) {
         msg += `\n• Talla: ${selectedSize}`;
       }
-      if (product.color_name) {
-        msg += `\n• Color: ${product.color_name}`;
+      /* Fase 7 (1.6): antes se enviaba siempre `product.color_name`, ignorando
+         el color que el cliente había seleccionado. Ahora va el seleccionado. */
+      if (selectedColor) {
+        msg += `\n• Color: ${selectedColor.label}`;
       }
     }
     // Link to the product page with ?ref=wa2 so WhatsApp always scrapes fresh OG tags
     msg += `\n\n👉 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa2`;
-    return encodeURIComponent(msg);
+    return msg;
   };
 
-  const whatsappUrl = whatsappNumber
-    ? `https://wa.me/${whatsappNumber}?text=${buildWhatsappMessage()}`
-    : '';
+  /* Fase 7 (1.8): normaliza el número (quita +, espacios, guiones, "00") y
+     devuelve '' si no es válido, para deshabilitar el botón en ese caso. */
+  const whatsappUrl = buildWhatsappUrl(whatsappNumber, buildWhatsappMessage());
 
   return (
     <div className="min-h-[100dvh] bg-white flex flex-col md:flex-row relative">
 
       {/* Mobile Header */}
       <header className="absolute top-0 w-full z-40 flex items-center justify-between p-4 bg-gradient-to-b from-black/20 to-transparent md:hidden">
-        <Link
-          href="/"
-          className="w-10 h-10 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#1a1a1a] shadow-sm active:scale-95 transition-all"
+        <button
+          onClick={goBack}
+          aria-label="Volver al catálogo"
+          className="w-11 h-11 flex items-center justify-center bg-white/80 rounded-full text-[#1a1a1a] shadow-sm active:scale-95 transition-all"
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>arrow_back</span>
-        </Link>
+        </button>
         <button
           onClick={toggleFavorite}
-          className="w-10 h-10 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#1a1a1a] shadow-sm active:scale-95 transition-all"
+          aria-label={isFavorite ? 'Quitar de guardados' : 'Guardar producto'}
+          aria-pressed={isFavorite}
+          className="w-11 h-11 flex items-center justify-center bg-white/80 rounded-full text-[#1a1a1a] shadow-sm active:scale-95 transition-all"
         >
           <span
             className={`material-symbols-outlined text-[20px] ${isFavorite ? 'text-[#e57373]' : ''}`}
@@ -145,15 +168,19 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       </header>
 
       {/* Desktop Back */}
-      <Link
-        href="/"
-        className="hidden md:flex fixed top-6 left-6 z-20 w-11 h-11 items-center justify-center rounded-full bg-white/70 backdrop-blur-md text-[#1a1a1a] hover:bg-white transition-colors shadow-sm border border-black/5"
+      <button
+        onClick={goBack}
+        aria-label="Volver al catálogo"
+        className="hidden md:flex fixed top-6 left-6 z-20 w-11 h-11 items-center justify-center rounded-full bg-white/80 text-[#1a1a1a] hover:bg-white transition-colors shadow-sm border border-black/5"
       >
         <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'wght' 300" }}>arrow_back</span>
-      </Link>
+      </button>
 
       {/* Left: Image */}
-      <div className="w-full md:w-1/2 md:fixed md:top-0 md:bottom-0 md:left-0 bg-[#eeecea] relative aspect-[4/5] md:aspect-auto md:h-[100dvh] flex items-center justify-center">
+      <div
+        className="w-full md:w-1/2 md:fixed md:top-0 md:bottom-0 md:left-0 bg-[#eeecea] relative aspect-[4/5] md:aspect-auto md:h-[100dvh] flex items-center justify-center touch-pan-y"
+        {...swipeHandlers}
+      >
         {allImages.length > 0 ? (
           /* Fase 6 (10.3): imagen principal con next/image (optimizada y con
              `priority` porque es el LCP de esta vista). Antes era un <img>
@@ -181,12 +208,13 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           className="top-16 left-2.5 md:top-20"
         />
 
-        {/* Carousel arrows */}
+        {/* Carousel arrows (los gestos táctiles del contenedor siguen activos) */}
         {allImages.length > 1 && (
           <>
             <div className="absolute inset-y-0 left-3 flex items-center">
               <button
-                onClick={() => setCurrentImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)}
+                onClick={goPrevImage}
+                aria-label="Imagen anterior"
                 className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_left</span>
@@ -194,19 +222,26 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             </div>
             <div className="absolute inset-y-0 right-3 flex items-center">
               <button
-                onClick={() => setCurrentImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)}
+                onClick={goNextImage}
+                aria-label="Imagen siguiente"
                 className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_right</span>
               </button>
             </div>
-            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5 z-10">
-              {allImages.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-[#1a1a1a]' : 'bg-black/20'}`}
-                />
-              ))}
+            <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-2 z-10 pointer-events-none">
+              <div className="flex justify-center gap-1.5">
+                {allImages.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-[#1a1a1a]' : 'bg-black/20'}`}
+                  />
+                ))}
+              </div>
+              {/* Pista de que se puede deslizar (Fase 7, 1.4). Sólo en táctil. */}
+              <span className="md:hidden text-[10px] text-[#666] bg-white/70 rounded-full px-2 py-0.5">
+                Desliza para ver más
+              </span>
             </div>
           </>
         )}
@@ -281,14 +316,18 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           {product.color_hex_codes && product.color_hex_codes.length > 0 && (
             <div className="mb-7">
               <span className="text-[11px] font-semibold text-[#aaa] uppercase tracking-widest block mb-3">
-                Color: <span className="font-normal normal-case text-[#888] tracking-normal">{product.color_name}</span>
+                {/* Fase 7 (1.6): muestra el color realmente seleccionado, no
+                    siempre `product.color_name`. */}
+                Color: <span className="font-normal normal-case text-[#888] tracking-normal">{selectedColor?.label}</span>
               </span>
               <div className="flex gap-3">
                 {product.color_hex_codes.map((hex, i) => (
                   <button
                     key={i}
                     onClick={() => setSelectedColorIndex(i)}
-                    className={`w-9 h-9 md:w-11 md:h-11 rounded-full transition-all hover:scale-110 border border-[#e0e0e0] ${i === selectedColorIndex ? 'ring-2 ring-[#1a1a1a]/15 ring-offset-2 border-none' : ''
+                    aria-label={`Color ${hex.toUpperCase()}`}
+                    aria-pressed={i === selectedColorIndex}
+                    className={`w-11 h-11 rounded-full transition-all hover:scale-110 border border-[#e0e0e0] ${i === selectedColorIndex ? 'ring-2 ring-[#1a1a1a]/15 ring-offset-2 border-none' : ''
                       }`}
                     style={{ background: hex }}
                   />

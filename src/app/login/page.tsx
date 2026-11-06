@@ -10,7 +10,6 @@ type Mode = 'login' | 'reset';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
@@ -40,17 +39,6 @@ export default function LoginPage() {
       setError(translateError(authError.message));
       setLoading(false);
       return;
-    }
-
-    // "Mantener sesión iniciada" desmarcado: la sesión vive mientras dure la
-    // pestaña. `@supabase/ssr` guarda en cookies; se eliminan al cerrar el
-    // navegador marcándolas como session-only desde el cliente de auth.
-    if (!remember) {
-      try {
-        window.sessionStorage.setItem('mm-session-only', '1');
-      } catch {
-        /* almacenamiento no disponible: se ignora */
-      }
     }
 
     // Volver a la ruta que pidió autenticación (p.ej. /admin/products) si existe.
@@ -215,21 +203,14 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Remember me (solo en modo login) */}
-            {mode === 'login' && (
-              <div className="flex items-center pt-1 pb-2">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  className="h-4 w-4 rounded border-[#d0d0d0] text-[#1a1a1a] focus:ring-[#1a1a1a] cursor-pointer"
-                />
-                <label htmlFor="remember-me" className="ml-2 text-sm text-[#888] cursor-pointer">
-                  Mantener sesión iniciada
-                </label>
-              </div>
-            )}
+            {/* Fase 7 (1.7): se retiró la casilla "Mantener sesión iniciada".
+                Con `@supabase/ssr` la sesión vive en cookies gestionadas por la
+                librería y no se puede prometer una duración distinta sin romper
+                la autenticación. El plan indica retirarla antes que mostrar una
+                opción que no cumple lo que anuncia. */}
+            <p className="text-xs text-[#aaa] leading-relaxed pt-1">
+              Tu sesión se mantiene mientras no cierres sesión.
+            </p>
 
             {/* Submit */}
             <motion.button

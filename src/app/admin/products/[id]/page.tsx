@@ -15,6 +15,7 @@ export default function ProductEditorPage() {
   
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<{ id: string, file: File, progress: number, url: string }[]>([]);
 
@@ -131,7 +132,8 @@ export default function ProductEditorPage() {
     for (const file of selected) {
       const validationError = validateImageFile(file);
       if (validationError) {
-        alert(validationError);
+        // Fase 7 (1.10): error visible en la interfaz, no un alert() bloqueante.
+        setFormError(validationError);
         e.target.value = '';
         return;
       }
@@ -159,7 +161,10 @@ export default function ProductEditorPage() {
         uploadedUrls.push(secureUrl);
       } catch (err) {
         console.error('Error uploading:', err);
-        alert(`Error al subir la imagen ${item.file.name}. ${err instanceof Error ? err.message : ''}`);
+        // Fase 7 (1.10): error visible, sin alert() bloqueante.
+        setFormError(
+          `No se pudo subir "${item.file.name}". ${err instanceof Error ? err.message : 'Inténtalo de nuevo.'}`
+        );
       }
 
       clearInterval(interval);
@@ -230,6 +235,21 @@ export default function ProductEditorPage() {
           </button>
         </div>
       </div>
+
+      {/* Fase 7 (1.10): errores del formulario visibles y descartables. */}
+      {formError && (
+        <div role="alert" className="flex items-start gap-2 rounded-2xl bg-[#fdf3f3] px-4 py-3 text-sm text-[#a33]">
+          <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
+          <span className="flex-1">{formError}</span>
+          <button
+            onClick={() => setFormError(null)}
+            aria-label="Cerrar aviso"
+            className="shrink-0 text-[#a33]/70 hover:text-[#a33]"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         

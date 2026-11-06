@@ -6,6 +6,7 @@ import { validateImageFile } from '@/utils/imageUpload';
 import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import { invalidateSettingsCache } from '@/utils/settingsCache';
+import { revalidateCatalog } from '@/app/admin/actions';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -73,6 +74,10 @@ export default function AdminSettingsPage() {
       // Invalidar la caché de ajustes para que la tienda pública vea el cambio.
       invalidateSettingsCache();
 
+      // Fase 7 (1.5): la portada pública también cachea los ajustes
+      // (WhatsApp, redes, mapa), así que hay que revalidarla en el servidor.
+      await revalidateCatalog();
+
       // Dispatch an event so the client app can update dynamically
       window.dispatchEvent(new Event('settingsUpdated'));
       
@@ -90,7 +95,9 @@ export default function AdminSettingsPage() {
 
     const validationError = validateImageFile(file);
     if (validationError) {
-      alert(validationError);
+      // Fase 7 (1.10): aviso en la interfaz, sin alert() bloqueante.
+      setSaveMessage(validationError);
+      setTimeout(() => setSaveMessage(''), 4000);
       e.target.value = '';
       return;
     }
@@ -101,7 +108,8 @@ export default function AdminSettingsPage() {
       handleChange('map_photo_url', secureUrl);
     } catch (e) {
       console.error(e);
-      alert('Error al subir la imagen. Intenta de nuevo.');
+      setSaveMessage('Error al subir la imagen. Intenta de nuevo.');
+      setTimeout(() => setSaveMessage(''), 4000);
     } finally {
       setIsUploading(false);
       e.target.value = '';

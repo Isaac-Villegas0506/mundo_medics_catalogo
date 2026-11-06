@@ -159,6 +159,20 @@
     padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
   }
 
+  /* Fase 7 (1.1): el pie de acciones del modal mide 48px (botón) + 32px
+     (py-4) + la zona segura. El área desplazable necesita exactamente eso
+     para que el último dato del producto no quede debajo de los botones.
+     Se suma un margen de 16px para que la separación sea visible. */
+  .pb-modal-actions {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom) + 16px);
+  }
+
+  @media (min-width: 768px) {
+    .pb-modal-actions {
+      padding-bottom: 104px;
+    }
+  }
+
   /* Skeleton shimmer animation */
   .skeleton-shimmer {
     background: linear-gradient(90deg, #e8e8e4 25%, #f0f0ec 50%, #e8e8e4 75%);

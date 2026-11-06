@@ -32,7 +32,8 @@ export async function getStoreSettings(force = false): Promise<StoreSettings> {
     // Fase 6: import dinámico para no arrastrar el cliente de Supabase
     // (auth + realtime) al bundle inicial de las páginas públicas.
     const { supabase } = await import('@/utils/supabase/client');
-    const { data, error } = await supabase.from('settings').select('*');
+    // Fase 7 (1.9): sólo las columnas necesarias; `id` y `created_at` no se usan.
+    const { data, error } = await supabase.from('settings').select('key, value');
     if (error || !data) {
       // Si falla, devolvemos lo último bueno que tengamos (o vacío).
       return cached?.data ?? {};

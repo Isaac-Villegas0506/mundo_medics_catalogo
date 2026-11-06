@@ -3,14 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
+import { revalidateCatalog } from '@/app/admin/actions';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
+  // Fase 7: confirmación propia en lugar de `confirm()` del navegador.
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<any | null>(null);
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [productSearch, setProductSearch] = useState('');
 
@@ -41,29 +48,56 @@ export default function AdminCategoriesPage() {
       name: cat.name,
       order_index: index,
     }));
-    await supabase.from('categories').upsert(updates);
+    const { error } = await supabase.from('categories').upsert(updates);
+    if (error) {
+      console.error('Error al reordenar categorías:', error);
+      setFormError('No se pudo guardar el orden. Vuelve a intentarlo.');
+      return;
+    }
+    // Fase 7 (1.5): el orden de las categorías se ve en la portada pública.
+    await revalidateCatalog();
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      setFormError('El nombre es obligatorio.');
+      return;
+    }
+    setFormError(null);
+    setSaving(true);
 
-    const payload: any = { name: formData.name };
+    const payload: any = { name: formData.name.trim() };
     if (formData.featured_product_id) payload.featured_product_id = formData.featured_product_id;
     else payload.featured_product_id = null; // Clear if empty
 
     if (editingId) {
-      await supabase.from('categories').update(payload).eq('id', editingId);
+      const { error } = await supabase.from('categories').update(payload).eq('id', editingId);
+      if (error) {
+        console.error('Error al actualizar categoría:', error);
+        setFormError('No se pudo actualizar la categoría.');
+        setSaving(false);
+        return;
+      }
       setCategories(categories.map(c => c.id === editingId ? { ...c, ...payload } : c));
       setEditingId(null);
     } else {
       payload.order_index = categories.length;
-      const { data } = await supabase.from('categories').insert([payload]).select();
-      if (data && data[0]) {
-        setCategories([...categories, data[0]]);
+      const { data, error } = await supabase.from('categories').insert([payload]).select();
+      if (error || !data?.[0]) {
+        console.error('Error al crear categoría:', error);
+        setFormError('No se pudo crear la categoría.');
+        setSaving(false);
+        return;
       }
+      setCategories([...categories, data[0]]);
     }
+
+    // Fase 7 (1.5): reflejar el cambio en el catálogo público al instante.
+    await revalidateCatalog();
+
     setFormData({ name: '', featured_product_id: '' });
     setProductSearch('');
+    setSaving(false);
   };
 
   const startEdit = (cat: any) => {
@@ -78,9 +112,30 @@ export default function AdminCategoriesPage() {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar esta categoría?')) return;
+    // Fase 7: se usa el modal de confirmación propio en lugar de `confirm()`.
+    const target = categories.find((c) => c.id === id);
+    setCategoryToDelete(target ?? { id });
+    setDeleteModalOpen(true);
+  };
+
+  const executeDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    const id = categoryToDelete.id;
+    const previous = categories;
     setCategories(categories.filter(c => c.id !== id));
-    await supabase.from('categories').delete().eq('id', id);
+    setDeleteModalOpen(false);
+    setCategoryToDelete(null);
+
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) {
+      console.error('Error al eliminar categoría:', error);
+      // Revertir: no se puede mostrar éxito si la operación falló.
+      setCategories(previous);
+      setFormError('No se pudo eliminar la categoría. Puede tener productos asociados.');
+      return;
+    }
+
+    await revalidateCatalog();
   };
 
   // Determine which product is currently selected in the form
@@ -204,12 +259,20 @@ export default function AdminCategoriesPage() {
               )}
               <button
                 onClick={handleSave}
-                disabled={!formData.name.trim()}
+                disabled={!formData.name.trim() || saving}
                 className="flex-1 bg-[#1a1a1a] text-white font-semibold text-sm px-4 py-3 rounded-xl hover:bg-[#333] transition-colors disabled:opacity-50"
               >
-                {editingId ? 'Actualizar' : 'Crear'}
+                {saving ? 'Guardando…' : editingId ? 'Actualizar' : 'Crear'}
               </button>
             </div>
+
+            {/* Fase 7 (1.10): el error se muestra, no se silencia. */}
+            {formError && (
+              <p role="alert" className="mt-3 flex items-start gap-2 rounded-xl bg-[#fdf3f3] px-3 py-2 text-xs text-[#a33]">
+                <span className="material-symbols-outlined text-[16px] shrink-0">error</span>
+                <span>{formError}</span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -286,6 +349,48 @@ export default function AdminCategoriesPage() {
         </div>
 
       </div>
+
+      {/* Fase 7: modal de confirmación propio (antes era `confirm()`). */}
+      <AnimatePresence>
+        {deleteModalOpen && categoryToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setDeleteModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-[380px] rounded-3xl bg-white p-6 text-center shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="material-symbols-outlined mb-3 block text-[36px] text-[#e57373]">delete</span>
+              <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">¿Eliminar categoría?</h3>
+              <p className="mb-6 text-sm text-[#777]">
+                Se eliminará <strong>{categoryToDelete.name}</strong>. Los productos no se borran, pero
+                quedarán sin esa categoría.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
+                  className="flex-1 rounded-2xl bg-[#f2f2f0] py-3 text-sm font-semibold text-[#1a1a1a] hover:bg-[#e8e8e4]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeDeleteCategory}
+                  className="flex-1 rounded-2xl bg-[#c62828] py-3 text-sm font-semibold text-white hover:bg-[#a01f1f]"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

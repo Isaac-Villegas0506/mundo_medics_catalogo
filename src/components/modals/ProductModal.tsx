@@ -3,11 +3,15 @@
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, useScroll, useTransform, useDragControls } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import ProductCard from '@/components/ui/ProductCard';
 import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
 import { CARD_FIELDS } from '@/utils/catalogConstants';
+import { getSelectedColor } from '@/utils/productColor';
+import { useSwipeGallery } from '@/hooks/useSwipeGallery';
+import { buildWhatsappUrl } from '@/utils/whatsapp';
 
 export interface Product {
   id: string;
@@ -44,6 +48,7 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
 }
 
 function ModalContent({ onClose, product }: { onClose: () => void, product: Product }) {
+  const router = useRouter();
   const whatsappNumber = useWhatsappNumber();
   const [includedProductsData, setIncludedProductsData] = React.useState<any[]>([]);
   const [relatedProductsData, setRelatedProductsData] = React.useState<Product[]>([]);
@@ -111,6 +116,8 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
   // Interactive states
   const [selectedSize, setSelectedSize] = React.useState<string | null>(product.sizes?.[0] || null);
   const [selectedColorIndex, setSelectedColorIndex] = React.useState<number>(0);
+  /* Fase 7 (1.6): el color que se muestra y se envía por WhatsApp. */
+  const selectedColor = getSelectedColor(product.color_hex_codes, product.color_name, selectedColorIndex);
   const [isFavorite, setIsFavorite] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [showSizeGuide, setShowSizeGuide] = React.useState(false);
@@ -126,6 +133,17 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
     return images;
   }, [product.image_url, product.gallery]);
 
+  /* Fase 7 (1.4): deslizar el dedo para cambiar de imagen (sin librerías). */
+  const goNextImage = React.useCallback(
+    () => setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1)),
+    [allImages.length]
+  );
+  const goPrevImage = React.useCallback(
+    () => setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1)),
+    [allImages.length]
+  );
+  const swipeHandlers = useSwipeGallery(goNextImage, goPrevImage, allImages.length > 1);
+
   const buildWhatsappMessage = () => {
     // Use env var so it always points to the real domain, never localhost
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '');
@@ -134,18 +152,19 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       if (selectedSize) {
         msg += `\n\u2022 Talla: ${selectedSize}`;
       }
-      if (product.color_name) {
-        msg += `\n\u2022 Color: ${product.color_name}`;
+      /* Fase 7 (1.6): antes se enviaba siempre `product.color_name`, ignorando
+         el color que el cliente había seleccionado. Ahora va el seleccionado. */
+      if (selectedColor) {
+        msg += `\n\u2022 Color: ${selectedColor.label}`;
       }
     }
     // Link to the product page with ?ref=wa so WhatsApp always scrapes fresh OG tags
     msg += `\n\n\uD83D\uDC49 Ver producto: ${siteUrl}/product?id=${product.id}&ref=wa2`;
-    return encodeURIComponent(msg);
+    return msg;
   };
 
-  const whatsappUrl = whatsappNumber
-    ? `https://wa.me/${whatsappNumber}?text=${buildWhatsappMessage()}`
-    : '';
+  /* Fase 7 (1.8): número normalizado; '' si no es válido (botón deshabilitado). */
+  const whatsappUrl = buildWhatsappUrl(whatsappNumber, buildWhatsappMessage());
 
   // Load favorites from local storage
   useEffect(() => {
@@ -227,11 +246,14 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
         {/* Scrollable Container */}
         <div
           ref={scrollRef}
-          className="w-full h-full overflow-y-auto md:overflow-hidden no-scrollbar flex flex-col md:flex-row pb-[80px] md:pb-0"
+          className="w-full h-full overflow-y-auto md:overflow-hidden no-scrollbar flex flex-col md:flex-row pb-modal-actions md:pb-0"
         >
           {/* Left: Image */}
           <div className="w-full md:w-[45%] aspect-[4/5] md:aspect-auto md:h-full relative flex-shrink-0 md:px-5 md:py-5 md:pr-2.5 z-0">
-            <div className="sticky top-0 w-full h-full bg-[#eeecea] md:rounded-[20px] overflow-hidden flex items-center justify-center relative">
+            <div
+              className="sticky top-0 w-full h-full bg-[#eeecea] md:rounded-[20px] overflow-hidden flex items-center justify-center relative touch-pan-y"
+              {...swipeHandlers}
+            >
               {allImages.length > 0 ? (
                 <>
                   <motion.div
@@ -252,7 +274,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                     <>
                       <div className="absolute inset-y-0 left-0 flex items-center">
                         <button
-                          onClick={() => setCurrentImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)}
+                          onClick={goPrevImage}
                           className="w-11 h-11 ml-2 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-[#1a1a1a] hover:bg-white transition-colors"
                         >
                           <span className="material-symbols-outlined text-[20px]">chevron_left</span>
@@ -260,7 +282,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                       </div>
                       <div className="absolute inset-y-0 right-0 flex items-center">
                         <button
-                          onClick={() => setCurrentImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)}
+                          onClick={goNextImage}
                           className="w-11 h-11 mr-2 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-[#1a1a1a] hover:bg-white transition-colors"
                         >
                           <span className="material-symbols-outlined text-[20px]">chevron_right</span>
@@ -343,7 +365,8 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               {product.color_hex_codes && product.color_hex_codes.length > 0 && (
                 <div className="mb-5">
                   <span className="text-[11px] font-semibold text-[#aaa] dark:text-zinc-500 uppercase tracking-widest block mb-2.5">
-                    Color: <span className="font-normal normal-case text-[#888] dark:text-zinc-400 tracking-normal ml-1">{product.color_name}</span>
+                    {/* Fase 7 (1.6): el nombre corresponde al color elegido. */}
+                    Color: <span className="font-normal normal-case text-[#888] dark:text-zinc-400 tracking-normal ml-1">{selectedColor?.label}</span>
                   </span>
                   <div className="flex gap-2.5">
                     {product.color_hex_codes.map((hex, i) => (
@@ -351,7 +374,9 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                         key={i}
                         whileTap={{ scale: 0.88 }}
                         onClick={() => setSelectedColorIndex(i)}
-                        className={`w-8 h-8 rounded-full border transition-all ${i === selectedColorIndex ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900' : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
+                        aria-label={`Color ${hex.toUpperCase()}`}
+                        aria-pressed={i === selectedColorIndex}
+                        className={`w-11 h-11 rounded-full border transition-all ${i === selectedColorIndex ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900' : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
                           }`}
                         style={{ background: hex }}
                       />
@@ -461,9 +486,10 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                           isFavorite={false} // We don't have full state sync here, keep simple or add logic if needed
                           onToggleFavorite={() => {}} 
                           onClick={() => {
-                            // Instead of opening another modal, we can just navigate or close this and trigger the parent,
-                            // but simply navigating to the product page is safest.
-                            window.location.href = `/product?id=${relatedProduct.id}`;
+                            /* Fase 7 (1.3): antes esto era `window.location.href`,
+                               que recarga TODO el documento y pierde la posición
+                               del usuario. `router.push` hace navegación interna. */
+                            router.push(`/product?id=${relatedProduct.id}`);
                           }}
                         />
                       </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { supabase } from '@/utils/supabase/client';
+import { revalidateCatalog } from '@/app/admin/actions';
 
 export default function AdminFeaturedPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -10,6 +11,8 @@ export default function AdminFeaturedPage() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const MAX_FEATURED = 10;
 
   useEffect(() => {
@@ -35,7 +38,9 @@ export default function AdminFeaturedPage() {
       setFeaturedProducts(featuredProducts.filter(p => p.id !== product.id));
     } else {
       if (featuredProducts.length >= MAX_FEATURED) {
-        alert(`Has alcanzado el límite máximo de ${MAX_FEATURED} productos destacados.`);
+        // Fase 7 (1.10): aviso en la interfaz, sin alert() bloqueante.
+        setSaveError(`Has alcanzado el límite de ${MAX_FEATURED} productos destacados.`);
+        setTimeout(() => setSaveError(null), 4000);
         return;
       }
       setFeaturedProducts([...featuredProducts, { ...product, is_featured: true }]);
@@ -45,19 +50,42 @@ export default function AdminFeaturedPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    
+    setSaveError(null);
+
     // First, set all products to not featured
-    await supabase.from('products').update({ is_featured: false }).neq('id', '00000000-0000-0000-0000-000000000000'); // Hack to update all rows
-    
+    const { error: clearError } = await supabase
+      .from('products')
+      .update({ is_featured: false })
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Hack to update all rows
+
+    if (clearError) {
+      console.error('Error al limpiar destacados:', clearError);
+      setSaveError('No se pudieron guardar los destacados.');
+      setSaving(false);
+      return;
+    }
+
     // Then set the selected ones to featured and update their order
-    await Promise.all(
-      featuredProducts.map((p, index) => 
+    const results = await Promise.all(
+      featuredProducts.map((p, index) =>
         supabase.from('products').update({ is_featured: true, order_index: index }).eq('id', p.id)
       )
     );
-    
+
+    const failed = results.find((r) => r.error);
+    if (failed?.error) {
+      console.error('Error al guardar destacados:', failed.error);
+      setSaveError('Algunos destacados no se guardaron. Revisa la lista.');
+      setSaving(false);
+      return;
+    }
+
+    // Fase 7 (1.5): los destacados se ven en la portada publica.
+    await revalidateCatalog();
+
     setSaving(false);
-    alert('Configuración guardada correctamente.');
+    setSaveMessage('Destacados guardados correctamente.');
+    setTimeout(() => setSaveMessage(null), 3000);
   };
 
   return (
@@ -84,6 +112,20 @@ export default function AdminFeaturedPage() {
           </button>
         </div>
       </div>
+
+      {/* Fase 7 (1.10): mensajes de resultado visibles, sin usar alert(). */}
+      {saveError && (
+        <p role="alert" className="flex items-start gap-2 rounded-2xl bg-[#fdf3f3] px-4 py-3 text-sm text-[#a33]">
+          <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
+          <span>{saveError}</span>
+        </p>
+      )}
+      {saveMessage && (
+        <p role="status" className="flex items-start gap-2 rounded-2xl bg-[#eef7ee] px-4 py-3 text-sm text-[#2e7d32]">
+          <span className="material-symbols-outlined text-[18px] shrink-0">check</span>
+          <span>{saveMessage}</span>
+        </p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         

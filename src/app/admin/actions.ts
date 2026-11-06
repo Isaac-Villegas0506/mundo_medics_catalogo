@@ -4,25 +4,32 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/utils/supabase/server';
 
 /**
- * Fase 7 (11.7): invalida la caché del catálogo público tras un cambio en el
- * panel. Sin esto, con `revalidate = 60` en la portada, un producto nuevo o
- * borrado tardaba hasta un minuto en reflejarse.
+ * Fase 7 (1.5): invalidación centralizada del catálogo público.
  *
- * Se protege con la sesión del usuario: si no hay sesión, no hace nada.
- * `revalidatePath` sólo tiene efecto en el servidor, por eso es una Server Action.
+ * Antes sólo se llamaba al cambiar el estado o borrar un producto. Faltaban:
+ * crear/editar/borrar categorías, reordenar destacados y guardar ajustes.
+ * Cualquier operación administrativa que afecte a lo público debe pasar por aquí.
+ *
+ * Se protege con la sesión del usuario: sin sesión no revalida nada, para que un
+ * anónimo no pueda forzar invalidaciones de caché.
+ *
+ * `revalidatePath` sólo funciona en el servidor, por eso es una Server Action.
  */
 export async function revalidateCatalog() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
   if (!data.user) {
-    // Sin sesión no se revalida (evita que un anónimo fuerce invalidaciones).
-    return { ok: false as const };
+    return { ok: false as const, reason: 'no-session' };
   }
 
+  // Portada: productos, categorías y ajustes (número de WhatsApp, redes…).
   revalidatePath('/', 'page');
-  revalidatePath('/categories');
+  // Detalle: ficha, "productos incluidos" y relacionados.
   revalidatePath('/product');
+  // Listados que también leen de la base.
+  revalidatePath('/categories');
+  revalidatePath('/favorites');
 
   return { ok: true as const };
 }
