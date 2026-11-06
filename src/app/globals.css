@@ -173,6 +173,21 @@
     }
   }
 
+  /* Fase 8 (corrección del pie del modal): relleno inferior del pie de acciones.
+     `pb-safe` NO servía aquí: al declararse más tarde en el CSS, pisaba a
+     `py-4` y a `md:pb-6` y dejaba padding-bottom = 0 en escritorio y en Android
+     (donde env(safe-area-inset-bottom) vale 0), pegando los botones al borde.
+     Esta utilidad SUMA el relleno base más la zona segura del dispositivo. */
+  .pb-modal-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    .pb-modal-footer {
+      padding-bottom: 24px;
+    }
+  }
+
   /* Skeleton shimmer animation */
   .skeleton-shimmer {
     background: linear-gradient(90deg, #e8e8e4 25%, #f0f0ec 50%, #e8e8e4 75%);

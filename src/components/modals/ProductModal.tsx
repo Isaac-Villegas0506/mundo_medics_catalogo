@@ -218,7 +218,8 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
         onDragEnd={handleDragEnd}
         className="fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
           bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px]
-          max-h-[92svh] md:max-h-[82vh] h-[92svh] md:h-[82vh]
+          max-h-[calc(100dvh-24px)] md:max-h-[calc(100dvh-96px)]
+          h-[92dvh] md:h-[82dvh]
           w-full md:w-[840px]
           md:-translate-x-1/2 md:-translate-y-1/2
           shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]
@@ -517,10 +518,12 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
 
         {/* Pie de acciones — hermano real del área desplazable (no flotante).
             `shrink-0` impide que se comprima cuando el contenido es largo. */}
-        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-5 md:px-6 py-4 pb-safe md:pb-6 border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-3 z-20">
+        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pt-4 pb-modal-footer border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2.5 md:gap-3 z-20">
           <Link
             href={`/product?id=${product.id}`}
-            className="flex-1 flex items-center justify-center h-12 bg-[#f2f2f0] dark:bg-zinc-800 text-[#1a1a1a] dark:text-zinc-100 rounded-2xl text-sm font-semibold hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
+            /* `min-w-0` + `text-center` evitan que el texto largo desborde en
+               móviles estrechos: se reparte en dos líneas en lugar de cortarse. */
+            className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 text-center leading-tight bg-[#f2f2f0] dark:bg-zinc-800 text-[#1a1a1a] dark:text-zinc-100 rounded-2xl text-[13px] md:text-sm font-semibold hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
           >
             Ver detalles completos
           </Link>
@@ -529,15 +532,15 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
               href={whatsappUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 flex items-center justify-center h-12 bg-[#25D366] text-white rounded-2xl text-sm font-semibold hover:bg-[#1ebe5d] transition-colors active:scale-[0.97] gap-2"
+              className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 bg-[#25D366] text-white rounded-2xl text-[13px] md:text-sm font-semibold hover:bg-[#1ebe5d] transition-colors active:scale-[0.97] gap-2"
             >
               <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
                 <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
               </svg>
-              Consultar
+              <span className="truncate">Consultar</span>
             </a>
           ) : (
-            <span className="flex-1 flex items-center justify-center h-12 bg-[#e0e0e0] text-[#999] rounded-2xl text-sm font-semibold cursor-not-allowed">
+            <span className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 bg-[#e0e0e0] text-[#999] rounded-2xl text-[13px] md:text-sm font-semibold cursor-not-allowed">
               Consultar
             </span>
           )}
