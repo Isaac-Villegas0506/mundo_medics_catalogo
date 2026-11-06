@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
+import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
 
 interface Product {
   id: string;
@@ -37,7 +39,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [isSizeGuideModalOpen, setIsSizeGuideModalOpen] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890');
+  const whatsappNumber = useWhatsappNumber();
   const [includedProductsData, setIncludedProductsData] = useState<any[]>([]);
 
   // Fetch included products if it's a set
@@ -60,21 +62,6 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       fetchIncluded();
     }
   }, [product]);
-
-  // Fetch WhatsApp number from settings
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data } = await supabase.from('settings').select('value').eq('key', 'whatsapp_number').maybeSingle();
-        if (data?.value) setWhatsappNumber(data.value);
-      } catch (e) { }
-    };
-    fetchSettings();
-
-    const handleUpdate = () => fetchSettings();
-    window.addEventListener('settingsUpdated', handleUpdate);
-    return () => window.removeEventListener('settingsUpdated', handleUpdate);
-  }, []);
 
   // Combine main image and gallery
   const allImages = React.useMemo(() => {
@@ -129,7 +116,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     return encodeURIComponent(msg);
   };
 
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${buildWhatsappMessage()}`;
+  const whatsappUrl = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}?text=${buildWhatsappMessage()}`
+    : '';
 
   return (
     <div className="min-h-[100dvh] bg-white flex flex-col md:flex-row relative">
@@ -166,23 +155,30 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       {/* Left: Image */}
       <div className="w-full md:w-1/2 md:fixed md:top-0 md:bottom-0 md:left-0 bg-[#eeecea] relative aspect-[4/5] md:aspect-auto md:h-[100dvh] flex items-center justify-center">
         {allImages.length > 0 ? (
-          <motion.img
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+          /* Fase 6 (10.3): imagen principal con next/image (optimizada y con
+             `priority` porque es el LCP de esta vista). Antes era un <img>
+             que descargaba el archivo original completo. */
+          <Image
+            key={allImages[currentImageIndex]}
             alt={product.name}
-            className="w-full h-full object-contain transition-all duration-500"
+            className="object-contain"
             src={allImages[currentImageIndex]}
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            preload
+            fetchPriority="high"
+            loading="eager"
           />
         ) : (
           <span className="text-[#bbb] font-light">Próximamente</span>
         )}
 
-        {/* Badges on the image */}
+        {/* Badges on the image (desplazados para no quedar debajo del botón de regresar) */}
         <ProductBadges
           tags={product.tags}
           isFeatured={product.is_featured}
           size="md"
+          className="top-16 left-2.5 md:top-20"
         />
 
         {/* Carousel arrows */}
@@ -191,7 +187,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div className="absolute inset-y-0 left-3 flex items-center">
               <button
                 onClick={() => setCurrentImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)}
-                className="w-8 h-8 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
+                className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_left</span>
               </button>
@@ -199,7 +195,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div className="absolute inset-y-0 right-3 flex items-center">
               <button
                 onClick={() => setCurrentImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)}
-                className="w-8 h-8 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
+                className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_right</span>
               </button>
@@ -217,7 +213,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       </div>
 
       {/* Right: Content — scrollable */}
-      <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-24 md:pb-32">
+      <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-nav md:pb-32">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -254,9 +250,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 {includedProductsData.map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-3 md:p-4 bg-white border border-[#ece9e2] rounded-2xl shadow-sm hover:shadow-md transition-shadow group gap-3">
                     <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
+                      <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                          <Image src={item.image_url} alt={item.name} fill sizes="80px" className="object-cover" />
                         ) : (
                           <span className="material-symbols-outlined text-[20px] text-[#aaa] w-full h-full flex items-center justify-center">image</span>
                         )}
@@ -351,17 +347,23 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
         {/* CTA footer */}
         <footer className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-black/5 p-4 pb-safe z-20 md:relative md:w-auto md:bg-transparent md:backdrop-blur-none md:border-none md:p-0 md:pt-2 md:mt-auto max-w-[480px] md:mx-0">
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center w-full bg-[#25D366] text-white py-3.5 md:py-4 rounded-2xl font-semibold text-base hover:bg-[#1ebe5d] transition-all active:scale-[0.98] gap-2.5 shadow-[0_4px_20px_rgba(37,211,102,0.35)]"
-          >
-            <svg className="w-5 h-5 fill-current flex-shrink-0" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-              <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
-            </svg>
-            {product.action_text || 'Consultar por WhatsApp'}
-          </a>
+          {whatsappUrl ? (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center w-full bg-[#25D366] text-white py-3.5 md:py-4 rounded-2xl font-semibold text-base hover:bg-[#1ebe5d] transition-all active:scale-[0.98] gap-2.5 shadow-[0_4px_20px_rgba(37,211,102,0.35)]"
+            >
+              <svg className="w-5 h-5 fill-current flex-shrink-0" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
+              </svg>
+              {product.action_text || 'Consultar por WhatsApp'}
+            </a>
+          ) : (
+            <span className="flex items-center justify-center w-full bg-[#e0e0e0] text-[#999] py-3.5 md:py-4 rounded-2xl font-semibold text-base cursor-not-allowed">
+              {product.action_text || 'Consultar por WhatsApp'}
+            </span>
+          )}
         </footer>
       </div>
 
@@ -387,8 +389,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                src="/medidas1.svg"
-                alt="Guía de Tallas Completa"
+                src="/medidas1.webp"
+                srcSet="/medidas1.webp 1200w, /medidas1@2x.webp 1800w"
+                sizes="(max-width: 768px) 100vw, 720px"
+                alt="Guía de tallas completa de Mundo Medics"
+                width={1200}
+                height={737}
+                loading="lazy"
+                decoding="async"
                 className="max-w-full max-h-[calc(90vh-52px)] object-contain rounded-2xl bg-white p-2"
                 onClick={(e) => e.stopPropagation()}
               />

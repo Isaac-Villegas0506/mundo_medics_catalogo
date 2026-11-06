@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'motion/react';
 import Image from 'next/image';
 import { Product } from '@/components/modals/ProductModal';
 import ProductBadges from '@/components/ui/ProductBadges';
@@ -16,12 +15,8 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, index, isFavorite, onToggleFavorite, onClick }: ProductCardProps) {
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 25, delay: index * 0.05 }}
-      whileTap={{ scale: 0.98 }}
-      className="flex flex-col cursor-pointer group h-full"
+    <article
+      className="flex flex-col cursor-pointer group h-full transition-transform duration-200 ease-out active:scale-[0.98]"
       onClick={() => onClick(product)}
     >
       {/* Image Card */}
@@ -29,10 +24,21 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
         {product.image_url ? (
           <Image
             alt={product.name}
-            className="object-contain img-reveal"
+            /* Fase 6 (LCP): la primera tarjeta NO lleva `img-reveal`.
+               Esa clase arranca en opacity:0 y anima 400 ms, y el navegador
+               no cuenta el LCP hasta que el elemento es visible. Era el motivo
+               principal del "element render delay" de 1.6 s en Lighthouse. */
+            className={index === 0 ? 'object-contain' : 'object-contain img-reveal'}
             src={product.image_url}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            /* Next.js 16 deprecó `priority` en favor de `preload` +
+               `fetchPriority` (ver docs de next/image). Con `priority` el
+               <link rel=preload> salía SIN fetchpriority, así que el LCP
+               competía con el resto de peticiones. */
+            preload={index === 0}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+            loading={index === 0 ? 'eager' : 'lazy'}
           />
         ) : (
           <div className="absolute inset-0 bg-[#eeecea] dark:bg-zinc-700 flex items-center justify-center">
@@ -40,13 +46,8 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
           </div>
         )}
 
-        {/* Hover overlay sutil */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileHover={{ opacity: 1 }}
-          transition={{ duration: 0.2 }}
-          className="absolute inset-0 bg-black/[0.04] dark:bg-white/[0.04] pointer-events-none"
-        />
+        {/* Hover overlay sutil (CSS puro: antes era un motion.div por tarjeta) */}
+        <div className="absolute inset-0 bg-black/[0.04] dark:bg-white/[0.04] pointer-events-none opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 
         {/* Badges on the image */}
         <ProductBadges
@@ -56,10 +57,11 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
         />
 
         {/* Favorite button */}
-        <motion.button
-          whileTap={{ scale: 0.85 }}
+        <button
           onClick={(e) => onToggleFavorite(e, product.id)}
-          className="absolute top-2.5 right-2.5 z-10 w-8 h-8 flex items-center justify-center bg-white/85 dark:bg-zinc-800/85 backdrop-blur-md rounded-full transition-colors shadow-sm hover:bg-white dark:hover:bg-zinc-700"
+          aria-label={isFavorite ? 'Quitar de guardados' : 'Guardar producto'}
+          aria-pressed={isFavorite}
+          className="absolute top-2.5 right-2.5 z-10 w-10 h-10 flex items-center justify-center bg-white/90 dark:bg-zinc-800/90 rounded-full transition-transform duration-150 shadow-sm hover:bg-white dark:hover:bg-zinc-700 active:scale-90"
         >
           <span
             className={`material-symbols-outlined text-[18px] transition-colors ${isFavorite ? 'text-[#e57373]' : 'text-[#999] dark:text-zinc-400'}`}
@@ -67,7 +69,7 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
           >
             favorite
           </span>
-        </motion.button>
+        </button>
       </div>
 
       {/* Text Content */}
@@ -111,6 +113,6 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
           </div>
         )}
       </div>
-    </motion.article>
+    </article>
   );
 }

@@ -59,13 +59,19 @@ interface ProductBadgesProps {
   isFeatured?: boolean;
   size?: 'sm' | 'md';
   max?: number;
+  /** Clases de posición para el contenedor (por defecto arriba a la izquierda). */
+  className?: string;
 }
 
 /**
  * Conjunto de badges que se muestran sobre la imagen del producto.
- * Estilo de "chip" pequeño, semitransparente y con backdrop-blur para integrarse con la imagen.
+ *
+ * Fase 6 (10.5): se quitó `backdrop-blur-md`. Con hasta 3 badges por tarjeta y
+ * 16 tarjetas por página son ~48 desenfoques simultáneos, y el desenfoque de
+ * fondo es de los efectos más caros en móvil. El fondo ya es semitransparente,
+ * así que el aspecto apenas cambia.
  */
-export default function ProductBadges({ tags, isFeatured, size = 'sm', max = 3 }: ProductBadgesProps) {
+export default function ProductBadges({ tags, isFeatured, size = 'sm', max = 3, className = 'top-2.5 left-2.5' }: ProductBadgesProps) {
   const visibleTags: string[] = [];
 
   if (isFeatured) {
@@ -86,13 +92,13 @@ export default function ProductBadges({ tags, isFeatured, size = 'sm', max = 3 }
     : 'text-[10px] px-2.5 py-1';
 
   return (
-    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start z-10 pointer-events-none">
+    <div className={`absolute ${className} flex flex-col gap-1 items-start z-10 pointer-events-none`}>
       {visibleTags.map((tag, idx) => {
         const style = getTagStyle(tag);
         return (
           <span
             key={`${tag}-${idx}`}
-            className={`${style.bg} ${style.text} ${style.border} border backdrop-blur-md ${sizeClasses} rounded-md font-bold tracking-widest uppercase shadow-sm`}
+            className={`${style.bg} ${style.text} ${style.border} border ${sizeClasses} rounded-md font-bold tracking-widest uppercase shadow-sm`}
           >
             {tag}
           </span>

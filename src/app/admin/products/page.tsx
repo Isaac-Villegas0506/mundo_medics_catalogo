@@ -244,7 +244,7 @@ export default function AdminProductsPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[28px] p-6 md:p-8 shadow-2xl w-[90%] min-w-[320px] max-w-[400px] border border-white/20 mx-auto flex flex-col items-center text-center"
+              className="bg-white rounded-[28px] p-6 md:p-8 shadow-2xl w-[90%] max-w-[400px] border border-white/20 mx-auto flex flex-col items-center text-center"
             >
               <h3 className="text-xl font-semibold text-[#1a1a1a] mb-2 tracking-tight">Confirmar Eliminación</h3>
               <p className="text-sm text-[#888] leading-relaxed mb-6">

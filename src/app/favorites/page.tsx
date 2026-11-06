@@ -7,6 +7,7 @@ import { supabase } from '@/utils/supabase/client';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
+import { CARD_FIELDS } from '@/utils/catalogConstants';
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -39,9 +40,10 @@ export default function FavoritesPage() {
     }
     
     setIsLoading(true);
+    // Solo los campos que muestra la tarjeta (Fase 4, 8.2).
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(CARD_FIELDS)
       .in('id', favIds)
       .order('created_at', { ascending: false });
       
@@ -71,12 +73,17 @@ export default function FavoritesPage() {
   const openProductModal = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
+    // La tarjeta trae campos básicos; se carga la ficha completa en el modal.
+    (async () => {
+      const { data } = await supabase.from('products').select('*').eq('id', product.id).single();
+      if (data) setSelectedProduct(data as Product);
+    })();
   };
 
   const displayProducts = products.filter(p => favorites.includes(p.id));
 
   return (
-    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-[80px] min-h-screen font-sans antialiased">
+    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-nav min-h-screen font-sans antialiased">
       <TopAppBar />
       
       <main className="pt-6 px-5 max-w-[1200px] mx-auto pb-8">
