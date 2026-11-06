@@ -219,7 +219,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={onClose}
-          className="hidden md:flex absolute top-4 right-4 z-50 w-9 h-9 items-center justify-center bg-[#f2f2f0] hover:bg-[#e8e8e4] rounded-full text-[#555] transition-colors"
+          className="hidden md:flex absolute top-4 right-4 z-50 w-11 h-11 items-center justify-center bg-[#f2f2f0] hover:bg-[#e8e8e4] rounded-full text-[#555] transition-colors"
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
         </motion.button>
@@ -253,7 +253,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                       <div className="absolute inset-y-0 left-0 flex items-center">
                         <button
                           onClick={() => setCurrentImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)}
-                          className="w-8 h-8 ml-2 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-[#1a1a1a] hover:bg-white transition-colors"
+                          className="w-11 h-11 ml-2 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-[#1a1a1a] hover:bg-white transition-colors"
                         >
                           <span className="material-symbols-outlined text-[20px]">chevron_left</span>
                         </button>
@@ -261,7 +261,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
                       <div className="absolute inset-y-0 right-0 flex items-center">
                         <button
                           onClick={() => setCurrentImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)}
-                          className="w-8 h-8 mr-2 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-[#1a1a1a] hover:bg-white transition-colors"
+                          className="w-11 h-11 mr-2 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-[#1a1a1a] hover:bg-white transition-colors"
                         >
                           <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                         </button>

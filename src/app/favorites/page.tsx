@@ -83,7 +83,7 @@ export default function FavoritesPage() {
   const displayProducts = products.filter(p => favorites.includes(p.id));
 
   return (
-    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-[80px] min-h-screen font-sans antialiased">
+    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-nav min-h-screen font-sans antialiased">
       <TopAppBar />
       
       <main className="pt-6 px-5 max-w-[1200px] mx-auto pb-8">

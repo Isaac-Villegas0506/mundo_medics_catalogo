@@ -143,7 +143,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
   };
 
   return (
-    <div className="bg-[#f8f8f6] dark:bg-zinc-950 text-[#1a1a1a] dark:text-zinc-100 pb-[80px] min-h-screen font-sans antialiased">
+    <div className="bg-[#f8f8f6] dark:bg-zinc-950 text-[#1a1a1a] dark:text-zinc-100 pb-nav min-h-screen font-sans antialiased">
       <TopAppBar onSearch={setSearchQuery} />
 
       <main className="pt-5 px-4 max-w-[1200px] mx-auto">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import TopAppBar from '@/components/navigation/TopAppBar';
@@ -56,7 +57,7 @@ export default function CategoriesPage() {
   }, []);
 
   return (
-    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-[80px] min-h-screen font-sans antialiased">
+    <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-nav min-h-screen font-sans antialiased">
       <TopAppBar />
 
       <main className="pt-6 px-5 max-w-[1200px] mx-auto pb-8">
@@ -83,11 +84,14 @@ export default function CategoriesPage() {
                 className="relative w-full aspect-[3/4] md:aspect-[4/5] rounded-[24px] overflow-hidden group border border-black/5 shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
               >
                 {cat.image_url ? (
-                  <img
+                  /* Fase 6 (10.3): next/image con `sizes` para que el CDN
+                     entregue el tamaño correcto en vez de la imagen original. */
+                  <Image
                     src={cat.image_url}
                     alt={cat.name}
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 bg-white"
+                    fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-105 bg-white"
                   />
                 ) : (
                   <div className="absolute inset-0 bg-[#e8e8e4] flex items-center justify-center transition-transform duration-700 group-hover:scale-105">

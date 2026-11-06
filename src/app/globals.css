@@ -151,6 +151,14 @@
     padding-top: env(safe-area-inset-top);
   }
 
+  /* Fase 6 (10.6): espacio para la barra inferior fija.
+     La nav mide 64px (h-16) MÁS la zona segura del dispositivo. Con un
+     `pb-[80px]` fijo, en un iPhone con home indicator (34px) el contenido
+     quedaba tapado. Aquí se suman ambos valores. */
+  .pb-nav {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
+  }
+
   /* Skeleton shimmer animation */
   .skeleton-shimmer {
     background: linear-gradient(90deg, #e8e8e4 25%, #f0f0ec 50%, #e8e8e4 75%);
@@ -181,5 +189,41 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Fase 6 (10.4): respetar `prefers-reduced-motion`.
+
+   Quien tiene activada la reducción de movimiento en su sistema (mareo,
+   epilepsia, sensibilidad vestibular) no debe recibir animaciones.
+
+   - Se neutralizan animaciones y transiciones CSS.
+   - Se conserva el estado final visible (no se oculta nada).
+   - `animation: none` en el shimmer evita el parpadeo infinito del esqueleto,
+     sustituyéndolo por un fondo estático que sigue indicando "cargando".
+
+   Las animaciones de `motion/react` se controlan aparte con `MotionConfig`
+   (ver src/components/MotionProvider.tsx).
+   ----------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .skeleton-shimmer {
+    animation: none !important;
+    background: #e8e8e4;
+  }
+
+  .img-reveal {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
   }
 }

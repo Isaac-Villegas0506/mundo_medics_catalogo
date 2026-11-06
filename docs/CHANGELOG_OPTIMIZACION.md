@@ -12,7 +12,7 @@ Archivo vivo. Se actualiza al finalizar cada fase. Última actualización: 6 de 
 | 3 | Velocidad | ✅ En `main` | `fase-3-velocidad` |
 | 4 | Supabase: consultas, paginación y datos | ✅ En `main` (PR abierto) | `fase-4-supabase` |
 | 5 | Next.js y arquitectura de renderizado | ✅ Completada | `fase-5-renderizado` |
-| 6 | Diseño visual y fluidez | — | |
+| 6 | Diseño visual y fluidez | ✅ Completada | `fase-6-diseno` |
 | 7 | Funcionamiento completo de todas las secciones | — | |
 | 8 | Seguridad, SEO y calidad | — | |
 | 9 | Pruebas de rendimiento y publicación | — | |
@@ -63,6 +63,18 @@ Archivo vivo. Se actualiza al finalizar cada fase. Última actualización: 6 de 
 - **Iconos:** Material Symbols pasó de 1.14 MB a un subconjunto local de 36 KB (`public/fonts/material-symbols-subset.woff2`); Flaticon (1.18 MB de CSS + 351 KB de fuente + ~1.08 MB de familias no usadas) se reemplazó por 7 SVG locales en `ClothingIcon.tsx`.
 - `src/app/layout.tsx`: eliminados los dos `<link>` externos.
 - Resultado medido: ≈2.5 MB → ≈36 KB de recursos externos; 0 dominios de terceros en la ruta crítica.
+
+### Fase 6 — Diseño visual y fluidez
+- `src/components/MotionProvider.tsx` (nuevo): `<MotionConfig reducedMotion="user">`; cubre los ~75 usos de `motion.*` de una vez.
+- `src/app/globals.css`: reglas `@media (prefers-reduced-motion: reduce)` y utilidad `.pb-nav` (64px + safe-area), más `backdrop-blur` reducido.
+- `ProductCard.tsx`: sin `motion.article` ni overlay animado; hover/active en CSS puro. Botón de favorito a 40px con `aria-label`/`aria-pressed`.
+- `ProductBadges.tsx`: eliminado `backdrop-blur-md` (hasta 48 desenfoques simultáneos).
+- `BottomNav.tsx` y `TopAppBar.tsx`: blur quitado en móvil (la barra superior lo conserva solo en `md:`).
+- **Bug corregido:** la barra inferior tapaba el final de la página en iOS (el `pb-[80px]` fijo no consideraba `env(safe-area-inset-bottom)`).
+- **Bug corregido:** el modal de admin desbordaba en pantallas de 320px (`min-w-[320px]` + `w-[90%]`).
+- Áreas táctiles de 32px → 44px en cerrar modales, flechas de galería y favorito.
+- Imágenes: galería del detalle, miniaturas de incluidos, tarjetas de categoría y logo pasan a `next/image`.
+- `next.config.ts`: `images.unsplash.com` añadido a `remotePatterns`.
 
 ## Limpieza aplicada (auditoría posterior a Fase 5)
 

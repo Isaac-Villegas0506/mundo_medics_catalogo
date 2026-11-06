@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
@@ -154,13 +155,17 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       {/* Left: Image */}
       <div className="w-full md:w-1/2 md:fixed md:top-0 md:bottom-0 md:left-0 bg-[#eeecea] relative aspect-[4/5] md:aspect-auto md:h-[100dvh] flex items-center justify-center">
         {allImages.length > 0 ? (
-          <motion.img
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+          /* Fase 6 (10.3): imagen principal con next/image (optimizada y con
+             `priority` porque es el LCP de esta vista). Antes era un <img>
+             que descargaba el archivo original completo. */
+          <Image
+            key={allImages[currentImageIndex]}
             alt={product.name}
-            className="w-full h-full object-contain transition-all duration-500"
+            className="object-contain"
             src={allImages[currentImageIndex]}
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority
           />
         ) : (
           <span className="text-[#bbb] font-light">Próximamente</span>
@@ -180,7 +185,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div className="absolute inset-y-0 left-3 flex items-center">
               <button
                 onClick={() => setCurrentImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)}
-                className="w-8 h-8 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
+                className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_left</span>
               </button>
@@ -188,7 +193,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div className="absolute inset-y-0 right-3 flex items-center">
               <button
                 onClick={() => setCurrentImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)}
-                className="w-8 h-8 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
+                className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#1a1a1a] hover:bg-white active:scale-90 transition-all shadow-sm"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>chevron_right</span>
               </button>
@@ -206,7 +211,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       </div>
 
       {/* Right: Content — scrollable */}
-      <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-24 md:pb-32">
+      <div className="w-full md:w-1/2 md:ml-[50%] flex flex-col bg-white relative z-10 pt-5 md:pt-16 px-5 md:px-12 pb-nav md:pb-32">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -243,9 +248,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 {includedProductsData.map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-3 md:p-4 bg-white border border-[#ece9e2] rounded-2xl shadow-sm hover:shadow-md transition-shadow group gap-3">
                     <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
+                      <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-xl bg-[#f8f8f6] overflow-hidden flex-shrink-0">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                          <Image src={item.image_url} alt={item.name} fill sizes="80px" className="object-cover" />
                         ) : (
                           <span className="material-symbols-outlined text-[20px] text-[#aaa] w-full h-full flex items-center justify-center">image</span>
                         )}

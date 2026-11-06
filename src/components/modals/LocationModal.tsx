@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
 
@@ -34,7 +35,7 @@ export default function LocationModal({ isOpen, onClose, settings }: LocationMod
                 <h3 className="font-semibold text-lg text-[#1a1a1a]">Visítanos en Tienda</h3>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center bg-[#f4f2f0] hover:bg-[#eceae6] rounded-full text-[#555] transition-colors"
+                  className="w-11 h-11 flex items-center justify-center bg-[#f4f2f0] hover:bg-[#eceae6] rounded-full text-[#555] transition-colors"
                 >
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
@@ -43,10 +44,12 @@ export default function LocationModal({ isOpen, onClose, settings }: LocationMod
               <div className="overflow-y-auto no-scrollbar p-5 flex flex-col gap-5">
                 {/* Image Placeholder */}
                 <div className="w-full h-48 bg-[#f4f2f0] rounded-2xl overflow-hidden relative">
-                  <img 
-                    src={settings.map_photo_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?q=80&w=800&auto=format&fit=crop"} 
-                    alt="Mundo Medic's Local" 
-                    className="w-full h-full object-cover"
+                  <Image
+                    src={settings.map_photo_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?q=80&w=800&auto=format&fit=crop"}
+                    alt="Mundo Medic's Local"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 480px"
+                    className="object-cover"
                   />
                   <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg shadow-sm text-xs font-semibold text-[#1a1a1a]">
                     Mundo Medic's

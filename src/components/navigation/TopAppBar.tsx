@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 
@@ -61,7 +62,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
 
   return (
     <>
-      <header className="sticky top-0 w-full z-40 bg-[#f8f8f6]/92 dark:bg-zinc-950/92 backdrop-blur-xl border-b border-black/[0.06] dark:border-white/10">
+      <header className="sticky top-0 w-full z-40 bg-[#f8f8f6]/95 dark:bg-zinc-950/95 md:backdrop-blur-xl border-b border-black/[0.06] dark:border-white/10">
         <div className="flex items-center justify-between px-4 h-14 max-w-[1200px] mx-auto relative">
           {/* Left Area */}
           <div className="w-14 flex items-center justify-start">
@@ -75,7 +76,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
 
             {/* Logo (Mobile only) */}
             <Link href="/" className="md:hidden flex items-center justify-start cursor-pointer active:scale-95 transition-transform">
-              <img src="/logomundomedics.png" alt="Mundo Medics Logo" className="h-11 object-contain" />
+              <Image src="/logomundomedics.png" alt="Mundo Medics Logo" width={120} height={44} className="h-11 w-auto object-contain" priority />
             </Link>
           </div>
 
@@ -173,7 +174,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
               <span className="font-semibold text-[#1a1a1a] dark:text-zinc-100 text-[17px] tracking-tight">Menú</span>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-[#f2f2f0] dark:bg-zinc-800 text-[#555] dark:text-zinc-400 hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 hover:text-[#1a1a1a] dark:hover:text-zinc-100 transition-colors"
+                className="w-11 h-11 flex items-center justify-center rounded-full bg-[#f2f2f0] dark:bg-zinc-800 text-[#555] dark:text-zinc-400 hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 hover:text-[#1a1a1a] dark:hover:text-zinc-100 transition-colors"
               >
                 <span className="material-symbols-outlined text-[19px]">close</span>
               </button>
@@ -209,7 +210,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
             {/* Sidebar Footer */}
             <div className="p-5 border-t border-black/[0.06] dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
               <div className="flex items-center gap-3">
-                <img src="/logomundomedics.png" alt="Mundo Medics Logo" className="h-8 object-contain" />
+                <Image src="/logomundomedics.png" alt="Mundo Medics Logo" width={96} height={32} className="h-8 w-auto object-contain" />
                 <div className="flex flex-col">
                   <span className="text-[13px] font-semibold text-[#1a1a1a] dark:text-zinc-100 leading-tight">Mundo Medics</span>
                   <span className="text-[11px] text-[#777] dark:text-zinc-500">Catálogo Digital</span>

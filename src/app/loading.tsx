@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="bg-[#f8f8f6] dark:bg-zinc-950 min-h-screen pb-[80px]">
+    <div className="bg-[#f8f8f6] dark:bg-zinc-950 min-h-screen pb-nav">
       {/* Barra superior */}
       <div className="sticky top-0 h-14 bg-[#f8f8f6]/92 dark:bg-zinc-950/92 border-b border-black/[0.06] dark:border-white/10" />
 

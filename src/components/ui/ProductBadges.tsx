@@ -65,7 +65,11 @@ interface ProductBadgesProps {
 
 /**
  * Conjunto de badges que se muestran sobre la imagen del producto.
- * Estilo de "chip" pequeño, semitransparente y con backdrop-blur para integrarse con la imagen.
+ *
+ * Fase 6 (10.5): se quitó `backdrop-blur-md`. Con hasta 3 badges por tarjeta y
+ * 16 tarjetas por página son ~48 desenfoques simultáneos, y el desenfoque de
+ * fondo es de los efectos más caros en móvil. El fondo ya es semitransparente,
+ * así que el aspecto apenas cambia.
  */
 export default function ProductBadges({ tags, isFeatured, size = 'sm', max = 3, className = 'top-2.5 left-2.5' }: ProductBadgesProps) {
   const visibleTags: string[] = [];
@@ -94,7 +98,7 @@ export default function ProductBadges({ tags, isFeatured, size = 'sm', max = 3, 
         return (
           <span
             key={`${tag}-${idx}`}
-            className={`${style.bg} ${style.text} ${style.border} border backdrop-blur-md ${sizeClasses} rounded-md font-bold tracking-widest uppercase shadow-sm`}
+            className={`${style.bg} ${style.text} ${style.border} border ${sizeClasses} rounded-md font-bold tracking-widest uppercase shadow-sm`}
           >
             {tag}
           </span>

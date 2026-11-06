@@ -22,7 +22,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full z-40 pb-safe bg-white/90 backdrop-blur-xl border-t border-black/5 md:hidden">
+    <nav className="fixed bottom-0 w-full z-40 pb-safe bg-white/95 border-t border-black/5 md:hidden">
       <div className="flex justify-around items-center h-16 px-2">
         {tabs.map(item => {
           // Si el item es /, solo es activo si pathname es exactamente /
