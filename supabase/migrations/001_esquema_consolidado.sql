@@ -1,14 +1,19 @@
 -- =============================================================================
 -- 001_esquema_consolidado.sql
--- Esquema consolidado de Mundo Medics Catálogo
--- Generado desde: supabase_schema.sql, _v2, _v3, _v4,
---   supabase_schema_settings.sql, migration_categories.sql,
---   schema_update_sets.sql, supabase_storage.sql
--- Fecha: 2026-11-06
--- =============================================================================
--- NOTA: Este archivo documenta el esquema ACTUAL de la base de datos.
--- NO ejecutar en producción — la base ya tiene estas tablas.
--- Para cambios futuros, crear nuevas migraciones numeradas (002_, 003_...).
+-- Esquema consolidado de Mundo Medics Catálogo (DOCUMENTACIÓN, NO EJECUTAR)
+--
+-- ⚠️⚠️ ESTE ARCHIVO ES SOLO REFERENCIA HISTÓRICA. NO LO EJECUTES. ⚠️⚠️
+--
+-- Contiene las políticas RLS ABIERTAS originales (escritura para cualquiera),
+-- que la migración 002 cierra. Si alguien ejecuta este archivo después de la
+-- 002, vuelve a abrir la base al público.
+--
+-- El esquema real y actual vive en:
+--   - 002_rls_seguridad.sql   → políticas correctas (lectura pública, escritura
+--                               solo para `authenticated`)
+--   - 003_indices_rendimiento.sql → índices de category y created_at
+--
+-- Verificado contra la base real el 2026-11-06 (information_schema).
 -- =============================================================================
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -76,15 +81,17 @@ CREATE POLICY "Permitir eliminar categorias"
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. TABLA: settings
 -- ─────────────────────────────────────────────────────────────────────────────
--- NOTA: Existen dos definiciones en el código original:
---   - supabase_schema_settings.sql: key TEXT PRIMARY KEY (sin id uuid)
---   - migration_categories.sql:     id UUID PRIMARY KEY, key VARCHAR UNIQUE
--- Se debe verificar cuál existe realmente en la base de producción.
--- La versión más probable (y recomendada) es la de key como PK:
+-- VERIFICADO contra la base real el 2026-11-06 (information_schema):
+--   id    uuid  PRIMARY KEY (settings_pkey)
+--   key   varchar(255) UNIQUE (settings_key_key)
+--   value text
+--   created_at timestamptz
+-- La versión anterior de este archivo decía que `key` era la PK; era incorrecto.
 CREATE TABLE IF NOT EXISTS public.settings (
-  key text PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  key varchar(255) NOT NULL UNIQUE,
   value text NOT NULL,
-  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;

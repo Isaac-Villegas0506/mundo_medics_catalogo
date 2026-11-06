@@ -28,10 +28,3 @@ export function createPublicClient() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
-
-/** Columnas de tarjeta (las mismas que usa el catálogo). */
-export const CARD_FIELDS =
-  'id, name, category, image_url, color_name, color_hex_codes, sizes, tags, is_featured, is_set';
-
-/** Tamaño de página del catálogo. */
-export const PAGE_SIZE = 16;

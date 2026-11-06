@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import CatalogClient from './CatalogClient';
-import { createPublicClient, CARD_FIELDS, PAGE_SIZE } from '@/utils/supabase/publicServer';
+import { createPublicClient } from '@/utils/supabase/publicServer';
+import { CARD_FIELDS, PAGE_SIZE } from '@/utils/catalogConstants';
 import type { Product } from '@/components/modals/ProductModal';
 
 export const metadata: Metadata = {

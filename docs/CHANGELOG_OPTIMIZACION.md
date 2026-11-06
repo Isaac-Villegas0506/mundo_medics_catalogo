@@ -6,7 +6,7 @@ Archivo vivo. Se actualiza al finalizar cada fase. Última actualización: 6 de 
 
 | Fase | Nombre | Estado | Rama |
 |---|---|---|---|
-| 0 | Preparación, inventario y línea base | En curso (ver pendientes abajo) | `fase-0-preparacion` |
+| 0 | Preparación, inventario y línea base | ✅ Completada | `fase-0-preparacion` |
 | 1 | Seguridad | ✅ En `main` — migraciones aplicadas y verificadas | `fase-1-seguridad` |
 | 2 | Cloudinary | ✅ En `main` | `fase-2-cloudinary` |
 | 3 | Velocidad | ✅ En `main` | `fase-3-velocidad` |
@@ -64,10 +64,23 @@ Archivo vivo. Se actualiza al finalizar cada fase. Última actualización: 6 de 
 - `src/app/layout.tsx`: eliminados los dos `<link>` externos.
 - Resultado medido: ≈2.5 MB → ≈36 KB de recursos externos; 0 dominios de terceros en la ruta crítica.
 
+## Limpieza aplicada (auditoría posterior a Fase 5)
+
+Se eliminó lo que ya no se usaba:
+
+| Archivo | Motivo |
+|---|---|
+| `supabase_schema.sql`, `_v2`, `_v3`, `_v4`, `_settings`, `_storage` | Consolidados en `migrations/001`. El `_v3` además reabría RLS al público. |
+| `migration_categories.sql`, `schema_update_sets.sql` | Consolidados en `migrations/001`. |
+| `src/app/admin/products/[id]/Untitled-{1,2}.txt` | Dos copias idénticas de un skill de Vercel, sin relación con el proyecto. |
+| `public/file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg` | SVG de plantilla de Next.js, sin uso. |
+| `public/medidas.svg` | 830 KB duplicados; la app usa `medidas1.svg`. |
+
+También se corrigió en `migrations/001` el esquema de `settings`: la PK es
+`id uuid` y `key` es `UNIQUE` (antes decía que `key` era la PK).
+
 ## Pendientes de Fase 0
-- `src/app/admin/products/[id]/Untitled-1.txt`, `Untitled-2.txt` aún en el árbol.
-- 8 archivos SQL sueltos en la raíz del proyecto aún rastreados.
-- `docs/CHANGELOG_OPTIMIZACION.md` (este archivo).
+- Fase 0 completada.
 
 ## Decisiones registradas
 Ver `docs/DECISIONES.md` (DEC-1 a DEC-12).

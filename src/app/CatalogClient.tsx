@@ -9,10 +9,7 @@ import { getStoreSettings } from '@/utils/settingsCache';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
-
-const PAGE_SIZE = 16;
-const CARD_FIELDS =
-  'id, name, category, image_url, color_name, color_hex_codes, sizes, tags, is_featured, is_set';
+import { CARD_FIELDS, PAGE_SIZE } from '@/utils/catalogConstants';
 
 export interface CatalogInitialData {
   categories: { id: string; name: string }[];

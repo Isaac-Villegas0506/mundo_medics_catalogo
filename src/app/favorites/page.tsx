@@ -7,6 +7,7 @@ import { supabase } from '@/utils/supabase/client';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
+import { CARD_FIELDS } from '@/utils/catalogConstants';
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -42,7 +43,7 @@ export default function FavoritesPage() {
     // Solo los campos que muestra la tarjeta (Fase 4, 8.2).
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, category, image_url, color_name, color_hex_codes, sizes, tags, is_featured, is_set')
+      .select(CARD_FIELDS)
       .in('id', favIds)
       .order('created_at', { ascending: false });
       

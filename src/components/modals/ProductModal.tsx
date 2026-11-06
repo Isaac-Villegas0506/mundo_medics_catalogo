@@ -7,6 +7,7 @@ import { motion, AnimatePresence, useScroll, useTransform, useDragControls } fro
 import ProductBadges, { CustomizationLabel } from '@/components/ui/ProductBadges';
 import ProductCard from '@/components/ui/ProductCard';
 import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
+import { CARD_FIELDS } from '@/utils/catalogConstants';
 
 export interface Product {
   id: string;
@@ -73,7 +74,7 @@ function ModalContent({ onClose, product }: { onClose: () => void, product: Prod
       const { supabase } = await import('@/utils/supabase/client');
       const { data } = await supabase
         .from('products')
-        .select('id, name, category, image_url, color_name, color_hex_codes, sizes, tags, is_featured, is_set')
+        .select(CARD_FIELDS)
         .eq('category', product.category)
         .neq('id', product.id)
         .limit(4);
