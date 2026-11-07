@@ -51,8 +51,12 @@ export default function RootLayout({
         </ThemeProvider>
         {/* Fase 9 (4.5): Vercel Web Analytics.
             Sólo recoge rutas visitadas y métricas agregadas; no usa cookies de
-            seguimiento ni datos personales. En local no envía nada. */}
-        <Analytics />
+            seguimiento ni datos personales.
+
+            Se monta ÚNICAMENTE en Vercel. El script vive en /_vercel/insights/,
+            que no existe en local: montarlo siempre provocaba un 404 y un error
+            de MIME type en la consola. Vercel define VERCEL=1 automáticamente. */}
+        {process.env.VERCEL === '1' && <Analytics />}
       </body>
     </html>
   );

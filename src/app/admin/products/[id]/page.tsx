@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Reorder } from 'motion/react';
+import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { validateImageFile } from '@/utils/imageUpload';
-import { uploadToCloudinary } from '@/utils/cloudinary';
+import { uploadToImageKit } from '@/utils/imageUploadClient';
 
 export default function ProductEditorPage() {
   const router = useRouter();
@@ -44,14 +44,6 @@ export default function ProductEditorPage() {
   const [newColorHex, setNewColorHex] = useState('#000000');
   const [newTag, setNewTag] = useState('');
 
-  useEffect(() => {
-    fetchCategories();
-    fetchAllProducts();
-    if (!isNew) {
-      fetchProduct();
-    }
-  }, [params.id]);
-
   const fetchAllProducts = async () => {
     const { data } = await supabase.from('products').select('id, name, image_url, color_name');
     if (data) setAllProducts(data);
@@ -85,6 +77,17 @@ export default function ProductEditorPage() {
     }
     setLoading(false);
   };
+
+  /* Fase 11: el efecto va después de las funciones que invoca, para no
+     referenciarlas antes de su declaración. */
+  useEffect(() => {
+    fetchCategories();
+    fetchAllProducts();
+    if (!isNew) {
+      fetchProduct();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -121,7 +124,7 @@ export default function ProductEditorPage() {
     handleChange('customization_options', newOptions);
   };
 
-  // Image Upload via Cloudinary
+  // Image Upload via ImageKit
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -157,7 +160,7 @@ export default function ProductEditorPage() {
       }, 300);
 
       try {
-        const secureUrl = await uploadToCloudinary(item.file);
+        const secureUrl = await uploadToImageKit(item.file);
         uploadedUrls.push(secureUrl);
       } catch (err) {
         console.error('Error uploading:', err);
@@ -435,9 +438,9 @@ export default function ProductEditorPage() {
               </label>
             </div>
             
-            <Reorder.Group axis="x" values={formData.gallery} onReorder={(val) => handleChange('gallery', val)} className="flex flex-wrap gap-3 pb-2">
+            <ReorderGroup axis="x" values={formData.gallery} onReorder={(val) => handleChange('gallery', val)} className="flex flex-wrap gap-3 pb-2">
               {formData.gallery.map((url, i) => (
-                <Reorder.Item key={url} value={url} className="w-28 h-28 flex-shrink-0 bg-[#f4f2f0] rounded-2xl overflow-hidden relative group cursor-grab active:cursor-grabbing border border-black/5">
+                <ReorderItem key={url} value={url} className="w-28 h-28 flex-shrink-0 bg-[#f4f2f0] rounded-2xl overflow-hidden relative group cursor-grab active:cursor-grabbing border border-black/5">
                   <img src={url} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
                     <span className="material-symbols-outlined text-white text-[20px]">drag_indicator</span>
@@ -453,7 +456,7 @@ export default function ProductEditorPage() {
                       Principal
                     </div>
                   )}
-                </Reorder.Item>
+                </ReorderItem>
               ))}
 
               {uploadingFiles.map(file => (
@@ -473,7 +476,7 @@ export default function ProductEditorPage() {
                 <span className="text-[10px] font-medium">Añadir</span>
                 <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
               </label>
-            </Reorder.Group>
+            </ReorderGroup>
           </div>
 
           {/* Variants */}
@@ -643,7 +646,7 @@ export default function ProductEditorPage() {
               <h3 className="font-semibold text-[#555] text-sm">Auditoría</h3>
             </div>
             <p className="text-[11px] text-[#888] leading-relaxed">
-              Los cambios se guardarán en la base de datos central. Las imágenes se subirán y alojarán en Supabase Storage (Bucket "products").
+              Los cambios se guardarán en la base de datos central. Las imágenes se subirán y alojarán en ImageKit y se servirán optimizadas.
             </p>
           </div>
         </div>

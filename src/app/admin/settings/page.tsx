@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import { validateImageFile } from '@/utils/imageUpload';
 import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
-import { uploadToCloudinary } from '@/utils/cloudinary';
+import { uploadToImageKit } from '@/utils/imageUploadClient';
 import { invalidateSettingsCache } from '@/utils/settingsCache';
 import { revalidateCatalog } from '@/app/admin/actions';
 
@@ -26,12 +26,10 @@ export default function AdminSettingsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    setIsLoading(true);
+  const fetchSettings = async (showSpinner = true) => {
+    /* Fase 11: `isLoading` arranca en true, así que el primer render no necesita
+       volver a activarlo (evita setState síncrono dentro del efecto). */
+    if (showSpinner) setIsLoading(true);
     try {
       const { data, error } = await supabase.from('settings').select('*');
       if (!error && data) {
@@ -43,11 +41,18 @@ export default function AdminSettingsPage() {
         });
         setSettings(loadedSettings);
       }
-    } catch (e) {
+    } catch {
       console.log('Settings table might not exist yet.');
     }
     setIsLoading(false);
   };
+
+  /* Fase 11: efecto después de la función que usa (evita el error de acceso
+     antes de la declaración). */
+  useEffect(() => {
+    fetchSettings(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (key: string, value: string) => {
     let finalValue = value;
@@ -104,7 +109,7 @@ export default function AdminSettingsPage() {
 
     setIsUploading(true);
     try {
-      const secureUrl = await uploadToCloudinary(file);
+      const secureUrl = await uploadToImageKit(file);
       handleChange('map_photo_url', secureUrl);
     } catch (e) {
       console.error(e);
@@ -270,7 +275,7 @@ export default function AdminSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-2">Enlace de "Ver Ruta" (Google Maps Compartir)</label>
+                  <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-2">Enlace de «Ver Ruta» (Google Maps Compartir)</label>
                   <input
                     type="text"
                     value={settings.map_directions_url}

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AnimatePresence } from 'motion/react';
 import ProductModal from '@/components/modals/ProductModal';
 import type { Product } from '@/types/product';
 import { supabase } from '@/utils/supabase/client';
@@ -126,7 +125,6 @@ export default function FavoritesPage() {
         <h1 className="text-[26px] font-semibold tracking-tight mb-6 text-[#1a1a1a]">Guardados</h1>
 
         <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          <AnimatePresence mode="popLayout">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <article key={`sk-${i}`} className="flex flex-col">
@@ -165,7 +163,6 @@ export default function FavoritesPage() {
                 />
               ))
             )}
-          </AnimatePresence>
         </section>
       </main>
 

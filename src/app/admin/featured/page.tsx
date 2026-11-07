@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Reorder, AnimatePresence } from 'motion/react';
+import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
 
@@ -15,10 +15,6 @@ export default function AdminFeaturedPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const MAX_FEATURED = 10;
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     setLoading(true);
     const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
@@ -29,6 +25,13 @@ export default function AdminFeaturedPage() {
     }
     setLoading(false);
   };
+
+  /* Fase 11: el efecto va después de `fetchData` para no referenciarla antes de
+     su declaración (error que marcaba el linter). */
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleFeatured = (product: any) => {
     if (!product) return;
@@ -147,10 +150,9 @@ export default function AdminFeaturedPage() {
                 <p className="text-sm font-medium text-[#888]">No hay productos destacados. Selecciona algunos del catálogo.</p>
               </div>
             ) : (
-              <Reorder.Group axis="y" values={featuredProducts} onReorder={setFeaturedProducts} className="flex flex-col gap-2">
-                <AnimatePresence>
-                  {featuredProducts.map((cat) => (
-                    <Reorder.Item 
+              <ReorderGroup values={featuredProducts} onReorder={setFeaturedProducts} className="flex flex-col gap-2">
+                      {featuredProducts.map((cat) => (
+                    <ReorderItem 
                       key={cat.id} 
                       value={cat}
                       className="group flex items-center justify-between p-3 border border-[#ece9e2] rounded-xl bg-white hover:border-[#ccc] transition-colors cursor-grab active:cursor-grabbing shadow-sm"
@@ -175,10 +177,9 @@ export default function AdminFeaturedPage() {
                       <button onClick={() => toggleFeatured(cat)} className="w-8 h-8 flex items-center justify-center rounded-full text-[#aaa] hover:text-[#e57373] hover:bg-red-50 transition-all">
                         <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
                       </button>
-                    </Reorder.Item>
+                    </ReorderItem>
                   ))}
-                </AnimatePresence>
-              </Reorder.Group>
+                  </ReorderGroup>
             )}
           </div>
         </div>

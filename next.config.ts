@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
         hostname: "whsonrlkbmnudwmxpfii.supabase.co",
       },
       {
+        // Fase 11: las imágenes nuevas se sirven desde ImageKit.
+        protocol: "https",
+        hostname: "ik.imagekit.io",
+      },
+      {
+        // Se mantiene para las imágenes antiguas que aún viven en Cloudinary.
         protocol: "https",
         hostname: "res.cloudinary.com",
       },

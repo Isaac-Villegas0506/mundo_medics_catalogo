@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Reorder, AnimatePresence } from 'motion/react';
+import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
 
@@ -23,11 +23,6 @@ export default function AdminCategoriesPage() {
 
   const [formData, setFormData] = useState({ name: '', featured_product_id: '' });
 
-  useEffect(() => {
-    fetchCategories();
-    fetchProducts();
-  }, []);
-
   const fetchProducts = async () => {
     const { data } = await supabase.from('products').select('id, name, image_url');
     if (data) setProducts(data);
@@ -39,6 +34,16 @@ export default function AdminCategoriesPage() {
     if (data) setCategories(data);
     setLoading(false);
   };
+
+  /* Fase 11: el efecto va DESPUÉS de las funciones que usa. Antes se declaraba
+     arriba y las llamaba antes de su definición, lo que el linter marcaba como
+     "Cannot access variable before it is declared". */
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+    // Se ejecuta una sola vez al montar; las funciones son estables en este uso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleReorder = async (newOrder: any[]) => {
     if (searchTerm.trim()) return; // Prevenir reordenamiento durante la búsqueda
@@ -299,10 +304,9 @@ export default function AdminCategoriesPage() {
           ) : categories.length === 0 ? (
             <div className="p-10 text-center text-[#888]">No hay categorías. Crea una.</div>
           ) : (
-            <Reorder.Group axis="y" values={searchTerm.trim() ? categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())) : categories} onReorder={handleReorder} className="flex flex-col">
-              <AnimatePresence>
+            <ReorderGroup values={searchTerm.trim() ? categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())) : categories} onReorder={handleReorder} className="flex flex-col">
                 {(searchTerm.trim() ? categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())) : categories).map((cat) => (
-                  <Reorder.Item
+                  <ReorderItem
                     key={cat.id}
                     value={cat}
                     className={`group flex items-center justify-between p-4 border-b border-[#ece9e2] last:border-none bg-white hover:bg-[#fcfcfb] transition-colors ${!searchTerm.trim() ? 'cursor-grab active:cursor-grabbing' : ''}`}
@@ -340,18 +344,16 @@ export default function AdminCategoriesPage() {
                         <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>delete</span>
                       </button>
                     </div>
-                  </Reorder.Item>
+                  </ReorderItem>
                 ))}
-              </AnimatePresence>
-            </Reorder.Group>
+            </ReorderGroup>
           )}
         </div>
 
       </div>
 
       {/* Fase 7: modal de confirmación propio (antes era `confirm()`). */}
-      <AnimatePresence>
-        {deleteModalOpen && categoryToDelete && (
+      {deleteModalOpen && categoryToDelete && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
             onClick={() => setDeleteModalOpen(false)}
@@ -383,7 +385,6 @@ export default function AdminCategoriesPage() {
             </div>
           </div>
         )}
-      </AnimatePresence>
     </main>
   );
 }

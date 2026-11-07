@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { createClient } from '@/utils/supabase/server';
 import AdminShell from '@/components/admin/AdminShell';
-import { MotionProvider } from '@/components/MotionProvider';
 
 /* Fase 8 (12.2): el panel nunca debe aparecer en buscadores. */
 export const metadata: Metadata = {
@@ -55,22 +55,18 @@ export default async function AdminLayout({
           Tu cuenta está activa, pero no tiene permisos para administrar el catálogo.
           Si crees que es un error, contacta con el responsable del sitio.
         </p>
-        <a
+        <Link
           href="/"
           className="rounded-xl bg-[#1a1a1a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#333]"
         >
           Volver al catálogo
-        </a>
+        </Link>
       </div>
     );
   }
 
-  /* Fase 10: el panel SÍ conserva framer-motion porque usa <Reorder> para
-     arrastrar y ordenar. Al vivir sólo aquí, ese peso no llega nunca al
-     catálogo público. */
-  return (
-    <MotionProvider>
-      <AdminShell>{children}</AdminShell>
-    </MotionProvider>
-  );
+  /* Fase 10: framer-motion eliminado también del panel.
+     El arrastre de listas lo hace ahora @/components/admin/Reorder
+     (Pointer Events nativos), así que no queda ninguna dependencia de motion. */
+  return <AdminShell>{children}</AdminShell>;
 }

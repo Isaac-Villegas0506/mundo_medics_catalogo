@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Reorder, AnimatePresence } from 'motion/react';
+import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { revalidateCatalog } from '@/app/admin/actions';
@@ -9,29 +9,41 @@ import { revalidateCatalog } from '@/app/admin/actions';
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  /* Fase 11: si falla la consulta se avisa, en vez de mostrar una lista vacía
+     como si no hubiera productos. */
+  const [loadError, setLoadError] = useState(false);
   
   // Modal states
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<any>(null);
   const [deleteCountdown, setDeleteCountdown] = useState(3);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    setLoading(true);
+  const fetchProducts = async (showSpinner = true) => {
+    /* Fase 11: `loading` ya arranca en `true`, así que en el primer render no
+       hace falta volver a activarlo. Evita el setState síncrono dentro del
+       efecto que React desaconseja (provoca renders en cascada). */
+    if (showSpinner) setLoading(true);
     const { data, error } = await supabase
       .from('products')
       .select('*')
       .order('order_index', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (data) {
+    if (error) {
+      console.error('Error cargando productos:', error);
+      setLoadError(true);
+    } else if (data) {
       setProducts(data);
     }
     setLoading(false);
   };
+
+  /* Fase 11: efecto después de la función que usa (evita el error de acceso
+     antes de la declaración). */
+  useEffect(() => {
+    fetchProducts(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleReorder = async (newOrder: any[]) => {
     setProducts(newOrder);
@@ -140,6 +152,17 @@ export default function AdminProductsPage() {
         {/* Table Body (Reorderable) */}
         {loading ? (
           <div className="p-10 text-center text-[#888]">Cargando productos...</div>
+        ) : loadError ? (
+          <div className="p-10 text-center flex flex-col items-center">
+            <span className="material-symbols-outlined text-[#ddd] text-[32px] mb-3">wifi_off</span>
+            <p className="text-[#555] font-medium mb-3">No pudimos cargar los productos.</p>
+            <button
+              onClick={() => { setLoadError(false); fetchProducts(); }}
+              className="bg-[#1a1a1a] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#333] transition-colors"
+            >
+              Reintentar
+            </button>
+          </div>
         ) : products.length === 0 ? (
           <div className="p-10 text-center flex flex-col items-center">
             <div className="w-16 h-16 bg-[#f4f2f0] rounded-full flex items-center justify-center mb-4">
@@ -149,10 +172,10 @@ export default function AdminProductsPage() {
             <Link href="/admin/products/new" className="text-[#1a1a1a] text-sm font-semibold mt-2 hover:underline">Crear tu primer producto</Link>
           </div>
         ) : (
-          <Reorder.Group axis="y" values={products} onReorder={handleReorder} className="flex flex-col">
-            <AnimatePresence>
+          <ReorderGroup values={products} onReorder={handleReorder} className="flex flex-col">
+
               {products.map((product) => (
-                <Reorder.Item 
+                <ReorderItem 
                   key={product.id} 
                   value={product}
                   className="group grid grid-cols-1 md:grid-cols-[auto_3fr_1.5fr_1fr_1.5fr_1fr] gap-4 p-4 md:p-5 items-center border-b border-[#ece9e2] last:border-none bg-white hover:bg-[#fcfcfb] transition-colors cursor-grab active:cursor-grabbing"
@@ -228,16 +251,15 @@ export default function AdminProductsPage() {
                     </button>
                   </div>
 
-                </Reorder.Item>
+                </ReorderItem>
               ))}
-            </AnimatePresence>
-          </Reorder.Group>
+
+          </ReorderGroup>
         )}
       </div>
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteModalOpen && (
+      {deleteModalOpen && (
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
@@ -266,8 +288,6 @@ export default function AdminProductsPage() {
             </div>
           </div>
         )}
-      </AnimatePresence>
-
     </main>
   );
 }
