@@ -166,11 +166,12 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <span className="text-[#bbb] font-light">Próximamente</span>
         )}
 
-        {/* Badges on the image */}
+        {/* Badges on the image (desplazados para no quedar debajo del botón de regresar) */}
         <ProductBadges
           tags={product.tags}
           isFeatured={product.is_featured}
           size="md"
+          className="top-16 left-2.5 md:top-20"
         />
 
         {/* Carousel arrows */}
