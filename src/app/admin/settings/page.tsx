@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import { validateImageFile } from '@/utils/imageUpload';
 import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -92,23 +93,11 @@ export default function AdminSettingsPage() {
 
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `settings_${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('products')
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data: publicData } = supabase.storage
-        .from('products')
-        .getPublicUrl(fileName);
-        
-      handleChange('map_photo_url', publicData.publicUrl);
+      const secureUrl = await uploadToCloudinary(file);
+      handleChange('map_photo_url', secureUrl);
     } catch (e) {
       console.error(e);
-      alert('Error al subir la imagen. Asegúrate de que el bucket "products" exista y permita subidas.');
+      alert('Error al subir la imagen. Intenta de nuevo.');
     } finally {
       setIsUploading(false);
       e.target.value = '';

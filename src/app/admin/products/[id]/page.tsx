@@ -6,6 +6,7 @@ import { supabase } from '@/utils/supabase/client';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { validateImageFile } from '@/utils/imageUpload';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 
 export default function ProductEditorPage() {
   const router = useRouter();
@@ -119,7 +120,7 @@ export default function ProductEditorPage() {
     handleChange('customization_options', newOptions);
   };
 
-  // Image Upload via Supabase Storage
+  // Image Upload via Cloudinary
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -146,33 +147,24 @@ export default function ProductEditorPage() {
     setUploadingFiles(prev => [...prev, ...newFiles]);
     setSaving(true);
 
-    const uploadedUrls = [];
+    const uploadedUrls: string[] = [];
 
     for (const item of newFiles) {
       const interval = setInterval(() => {
         setUploadingFiles(prev => prev.map(f => f.id === item.id ? { ...f, progress: Math.min(f.progress + (Math.random() * 15 + 5), 90) } : f));
       }, 300);
 
-      const fileExt = item.file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('products')
-        .upload(fileName, item.file);
+      try {
+        const secureUrl = await uploadToCloudinary(item.file);
+        uploadedUrls.push(secureUrl);
+      } catch (err) {
+        console.error('Error uploading:', err);
+        alert(`Error al subir la imagen ${item.file.name}. ${err instanceof Error ? err.message : ''}`);
+      }
 
       clearInterval(interval);
       setUploadingFiles(prev => prev.map(f => f.id === item.id ? { ...f, progress: 100 } : f));
 
-      if (error) {
-        console.error('Error uploading:', error);
-        alert(`Error al subir la imagen ${item.file.name}. Verifica que creaste el bucket en Supabase.`);
-      } else if (data) {
-        const { data: publicData } = supabase.storage
-          .from('products')
-          .getPublicUrl(fileName);
-        uploadedUrls.push(publicData.publicUrl);
-      }
-      
       await new Promise(r => setTimeout(r, 300));
       setUploadingFiles(prev => prev.filter(f => f.id !== item.id));
       URL.revokeObjectURL(item.url);
