@@ -346,16 +346,13 @@ function ModalContent({
       {/* Modal Container
           Fase 10: la entrada/salida la hace CSS (mm-in-sheet / mm-out-sheet,
           antes el spring de framer-motion). El arrastre del asa se gestiona con
-          Pointer Events y se refleja en `translateY(dragY)` con transición CSS. */}
+          Pointer Events y se refleja en `translateY(dragY)` con transición CSS.
+
+          Fase 23: la altura descuenta la barra de navegación inferior (64px) en
+          móvil. Antes eran 92dvh desde bottom-0, así que el pie quedaba bajo el
+          BottomNav y éste lo tapaba. Ahora: 88dvh + `mb-bottom-nav`. */}
       <div
-        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70]
-          bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px]
-          max-h-[calc(100dvh-24px)] md:max-h-[calc(100dvh-96px)]
-          h-[92dvh] md:h-[82dvh]
-          w-full md:w-[840px]
-          md:-translate-x-1/2 md:-translate-y-1/2
-          shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]
-          flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
+        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] max-h-[calc(100dvh-64px-env(safe-area-inset-bottom))] md:max-h-[calc(100dvh-96px)] h-[88dvh] md:h-[82dvh] mb-bottom-nav w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
         style={{
           /* El arrastre se aplica con la variable CSS `--mm-drag-y`, no con
              `transform` directo: así no se pisa el centrado de escritorio
@@ -403,8 +400,13 @@ function ModalContent({
           ref={scrollRef}
           className="w-full flex-1 min-h-0 overflow-y-auto md:overflow-hidden no-scrollbar flex flex-col md:flex-row"
         >
-          {/* Left: Image */}
-          <div className="w-full md:w-[45%] aspect-[4/5] md:aspect-auto md:h-full relative flex-shrink-0 md:px-5 md:py-5 md:pr-2.5 z-0">
+          {/* Left: Image
+              Fase 23: en móvil la imagen pasa de `aspect-[4/5]` (≈125% del
+              ancho, unos 500 px en un teléfono) a una altura acotada de 32dvh.
+              Con la proporción anterior, el nombre del producto quedaba fuera
+              de pantalla y había que deslizar para verlo; ahora es visible al
+              abrir. En escritorio se mantiene el diseño de dos columnas. */}
+          <div className="w-full md:w-[45%] h-[32dvh] md:h-full md:aspect-auto relative flex-shrink-0 md:px-5 md:py-5 md:pr-2.5 z-0">
             <div
               className="sticky top-0 w-full h-full bg-[#eeecea] md:rounded-[20px] overflow-hidden flex items-center justify-center relative touch-pan-y"
               {...swipeHandlers}
@@ -714,37 +716,20 @@ function ModalContent({
           </div>
         </div>
 
-        {/* Fase 22: añadir a la lista de consulta.
-            Va encima del pie, a todo el ancho, porque es la acción nueva:
-            permite juntar varios productos y preguntar por todos de una vez. */}
-        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pb-2 bg-white dark:bg-zinc-900 z-20">
-          <button
-            type="button"
-            onClick={addToInquiryList}
-            className={`flex w-full items-center justify-center gap-2 h-11 rounded-2xl text-[13px] font-semibold transition-colors active:scale-[0.98] ${
-              inInquiry
-                ? 'bg-[#eef7ee] text-[#2e7d32] dark:bg-zinc-800 dark:text-[#7bc47f]'
-                : 'bg-[#f2f2f0] text-[#1a1a1a] dark:bg-zinc-800 dark:text-zinc-100 hover:bg-[#e8e8e4] dark:hover:bg-zinc-700'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: inInquiry ? "'FILL' 1" : "'FILL' 0, 'wght' 300" }}>
-              {inInquiry ? 'check_circle' : 'add_shopping_cart'}
-            </span>
-            {inInquiry ? 'Añadido a tu lista' : 'Añadir a mi lista de consulta'}
-          </button>
-        </div>
-
-        {/* Pie de acciones — hermano real del área desplazable (no flotante).
-            `shrink-0` impide que se comprima cuando el contenido es largo. */}
-        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pt-1 pb-modal-footer border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2.5 md:gap-3 z-20">
+        {/* Pie de acciones (Fase 23).
+            Antes el botón «Añadir a mi lista» ocupaba una fila entera encima
+            del pie. En un móvil eso restaba ~60 px al área visible y empujaba
+            el nombre del producto fuera de pantalla.
+            Ahora va como botón-icono cuadrado junto a WhatsApp: la misma
+            función en una sola fila, sin robar altura a la ficha. */}
+        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pt-3 pb-modal-footer border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2 md:gap-3 z-20">
           <Link
             href={`/product?id=${product.id}`}
-            /* `min-w-0` + `text-center` evitan que el texto largo desborde en
-               móviles estrechos: se reparte en dos líneas en lugar de cortarse. */
             className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 text-center leading-tight bg-[#f2f2f0] dark:bg-zinc-800 text-[#1a1a1a] dark:text-zinc-100 rounded-2xl text-[13px] md:text-sm font-semibold hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
           >
-            Ver detalles completos
+            Ver detalles
           </Link>
+
           {whatsappUrl ? (
             <a
               href={whatsappUrl}
@@ -758,10 +743,31 @@ function ModalContent({
               <span className="truncate">Consultar</span>
             </a>
           ) : (
-            <span className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 bg-[#e0e0e0] text-[#999] rounded-2xl text-[13px] md:text-sm font-semibold cursor-not-allowed">
+            <span className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 bg-[#e0e0e0] text-[#6b6b6b] rounded-2xl text-[13px] md:text-sm font-semibold cursor-not-allowed">
               Consultar
             </span>
           )}
+
+          {/* Añadir a la lista de consulta: botón cuadrado, 48x48 (mínimo
+              táctil de 44). Cambia a verde cuando el producto ya está dentro. */}
+          <button
+            type="button"
+            onClick={addToInquiryList}
+            aria-label={inInquiry ? 'Ya está en tu lista de consulta' : 'Añadir a mi lista de consulta'}
+            aria-pressed={inInquiry}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors active:scale-[0.97] ${
+              inInquiry
+                ? 'bg-[#eef7ee] text-[#2e7d32] dark:bg-zinc-800 dark:text-[#7bc47f]'
+                : 'bg-[#f2f2f0] text-[#1a1a1a] dark:bg-zinc-800 dark:text-zinc-100 hover:bg-[#e8e8e4] dark:hover:bg-zinc-700'
+            }`}
+          >
+            <span
+              className="material-symbols-outlined text-[21px]"
+              style={{ fontVariationSettings: inInquiry ? "'FILL' 1" : "'FILL' 0, 'wght' 300" }}
+            >
+              {inInquiry ? 'check_circle' : 'add_shopping_cart'}
+            </span>
+          </button>
         </div>
       </div>
 

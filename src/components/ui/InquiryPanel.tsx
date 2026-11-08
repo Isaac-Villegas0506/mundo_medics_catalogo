@@ -72,11 +72,13 @@ export default function InquiryPanel() {
 
   return (
     <>
-      {/* Barra flotante */}
-      <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom)+12px)] left-1/2 z-40 w-[calc(100%-2rem)] max-w-[520px] -translate-x-1/2 md:bottom-6">
-        <div className="flex items-center gap-3 rounded-2xl border border-black/5 bg-[#1a1a1a] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)] mm-in">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
-            <span className="material-symbols-outlined text-[19px]">checklist</span>
+      {/* Barra flotante.
+          Fase 23: se coloca ENCIMA de la barra de navegación (BottomNav mide
+          64px) y no la tapa. En escritorio va al pie de la ventana. */}
+      <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom)+12px)] left-1/2 z-30 w-[calc(100%-2rem)] max-w-[520px] -translate-x-1/2 md:bottom-6">
+        <div className="flex items-center gap-3 rounded-2xl border border-black/5 bg-[#1a1a1a] px-3 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] mm-in">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
+            <span className="material-symbols-outlined text-[18px]">checklist</span>
           </span>
 
           <button
@@ -84,11 +86,11 @@ export default function InquiryPanel() {
             className="min-w-0 flex-1 text-left"
             aria-label="Ver mi lista de consulta"
           >
-            <span className="block text-[13px] font-semibold leading-tight text-white">
+            <span className="block text-[12px] font-semibold leading-tight text-white">
               {items.length} producto{items.length === 1 ? '' : 's'} en tu lista
             </span>
-            <span className="block truncate text-[11px] text-white/60">
-              Toca para ver o enviar la consulta
+            <span className="block truncate text-[10px] text-white/60">
+              Toca para ver o enviar
             </span>
           </button>
 
@@ -96,15 +98,18 @@ export default function InquiryPanel() {
             onClick={handleSend}
             disabled={!whatsappUrl}
             aria-label="Consultar todos por WhatsApp"
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2.5 text-[12px] font-semibold text-white transition-transform active:scale-95 disabled:opacity-50"
+            className="flex shrink-0 items-center gap-1 rounded-xl bg-[#25D366] px-2.5 py-2 text-[11px] font-semibold text-white transition-transform active:scale-95 disabled:opacity-50"
           >
-            <span className="material-symbols-outlined text-[17px]">send</span>
-            Enviar
+            <span className="material-symbols-outlined text-[16px]">send</span>
+            <span className="hidden sm:inline">Enviar</span>
           </button>
         </div>
       </div>
 
-      {/* Panel desplegable */}
+      {/* Panel desplegable.
+          Fase 23: en móvil se ancla sobre la barra de navegación (no encima de
+          ella) y su altura máxima descuenta la nav + zona segura, para que el
+          botón de enviar quede siempre accesible. */}
       {isOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 md:items-center"
@@ -114,7 +119,7 @@ export default function InquiryPanel() {
           aria-labelledby="inquiry-title"
         >
           <div
-            className="flex max-h-[85dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[28px] bg-white md:rounded-[28px] mm-sheet-in"
+            className="flex max-h-[calc(85dvh-64px-env(safe-area-inset-bottom))] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[28px] mb-bottom-nav bg-white md:mb-0 md:rounded-[28px] mm-in-sheet"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Cabecera */}

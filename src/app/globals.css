@@ -159,6 +159,21 @@
     padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
   }
 
+  /* Fase 23 — el modal en móvil debe dejar sitio a la barra de navegación.
+     El panel se ancla abajo (`bottom-0`) con 92dvh, así que su pie de acciones
+     quedaba DEBAJO del BottomNav (64px, z-40), que lo tapaba.
+     Se sube el panel exactamente la altura de la barra. */
+  .mb-bottom-nav {
+    margin-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    /* En escritorio el modal va centrado: no hay barra inferior. */
+    .mb-bottom-nav {
+      margin-bottom: 0;
+    }
+  }
+
   /* Fase 7 (1.1): el pie de acciones del modal mide 48px (botón) + 32px
      (py-4) + la zona segura. El área desplazable necesita exactamente eso
      para que el último dato del producto no quede debajo de los botones.
