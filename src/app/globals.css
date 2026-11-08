@@ -287,9 +287,15 @@
   }
 }
 
+/* Fase 15: la salida del panel arranca desde donde esté en ese momento.
+   Antes empezaba siempre en `translateY(0)`: si el usuario cerraba arrastrando
+   el panel hacia abajo, éste saltaba de vuelta ARRIBA y se veía de nuevo durante
+   un instante antes de bajar. Ese era el "parpadeo" reportado.
+   Con `translateY(var(--mm-drag-y, 0px))` el cierre continúa desde la posición
+   real del arrastre, sin salto. */
 @keyframes mm-sheet-down {
   from {
-    transform: translateY(0);
+    transform: translateY(var(--mm-drag-y, 0px));
     opacity: 1;
   }
   to {
@@ -438,19 +444,27 @@
     animation: mm-slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
   }
 
-  /* Fase 11/13: arrastre del modal en móvil.
+  /* Fase 11/13/15: arrastre del modal en móvil.
      El desplazamiento se pasa por la variable `--mm-drag-y`.
 
-     ⚠️ IMPORTANTE: aquí se usa `transform`, NO `translate`.
+     ⚠️ Aquí se usa `transform`, NO `translate`.
      Tailwind v4 implementa `-translate-x-1/2` / `-translate-y-1/2` con la
      propiedad `translate`. Si esta clase también declarara `translate`, pisaría
-     el centrado y el modal saldría desplazado en escritorio (bug reportado).
+     el centrado y el modal saldría desplazado en escritorio.
 
      `transform` está libre, así que ambas se componen sin conflicto: primero
      actúa `translate` (el centrado de Tailwind) y después este `transform`
-     (el arrastre). */
+     (el arrastre).
+
+     Fase 15: cuando el panel está CERRÁNDOSE, la animación de salida toma el
+     control, así que aquí no se aplica `transform` (si se aplicara, competiría
+     con la animación y volvería a producirse el salto). */
   .mm-draggable {
     transform: translateY(var(--mm-drag-y, 0px));
+  }
+
+  .mm-draggable.mm-out-sheet {
+    transform: none;
   }
 
   @media (min-width: 768px) {

@@ -177,7 +177,11 @@ function ModalContent({
       // Umbral más permisivo que antes (era 100 px): en pantallas pequeñas
       // 80 px ya es un gesto claro.
       if (distance > 80 || velocity > 0.35) {
-        setDragY(distance);
+        /* Fase 15: se CONSERVA `dragY` (no se resetea). La animación de salida
+           arranca desde `var(--mm-drag-y)`, es decir desde donde está el panel.
+           Antes empezaba en 0 y el modal saltaba de vuelta arriba, mostrándose
+           entero otra vez durante un instante: ese era el parpadeo reportado. */
+        setSettling(false);
         onClose();
         return;
       }
