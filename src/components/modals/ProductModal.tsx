@@ -11,6 +11,7 @@ import { CARD_FIELDS } from '@/utils/catalogConstants';
 import { getSelectedColor } from '@/utils/productColor';
 import { useSwipeGallery } from '@/hooks/useSwipeGallery';
 import { buildWhatsappUrl } from '@/utils/whatsapp';
+import { addToInquiry, getInquiryList } from '@/utils/inquiryList';
 import ImageLightbox from '@/components/ui/ImageLightbox';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
@@ -310,6 +311,30 @@ function ModalContent({
     } catch (e) { }
   };
 
+  /* Fase 22 — añadir a la lista de consulta (varios productos en un mensaje).
+     Se guarda junto al color y la talla elegidos para no tener que preguntar. */
+  const [inInquiry, setInInquiry] = React.useState(false);
+  const [inquiryToast, setInquiryToast] = React.useState(false);
+
+  React.useEffect(() => {
+    setInInquiry(getInquiryList().some((x) => x.id === product.id));
+  }, [product.id]);
+
+  const addToInquiryList = () => {
+    const existed = addToInquiry({
+      id: product.id,
+      name: product.name,
+      color_name: selectedColor?.label || product.color_name,
+      size: selectedSize || undefined,
+      image_url: product.image_url,
+    });
+    setInInquiry(true);
+    setInquiryToast(true);
+    // El aviso desaparece solo; el botón queda marcado mientras esté en la lista.
+    window.setTimeout(() => setInquiryToast(false), 2200);
+    return existed;
+  };
+
   return (
     <>
       {/* Backdrop */}
@@ -344,12 +369,15 @@ function ModalContent({
         }}
       >
         {/* Zona de arrastre (sólo móvil).
-            Todo el ancho y 56 px de alto: antes medía 128×48 px, así que era
-            fácil fallar el gesto y parecía que "no funcionaba".
-            Fase 14: los manejadores de move/up están en `window`, aquí sólo el
-            inicio. La barra visible sigue siendo pequeña. */}
+            ⚠️ BUG CORREGIDO (Fase 22): antes esta franja medía `h-14` (56 px),
+            ocupaba todo el ancho y tenía `z-50`. Los botones de cerrar y
+            favorito están en `top-4` (16 px) con el mismo `z-50`, y como esta
+            franja va DESPUÉS en el DOM, se pintaba encima y se comía los
+            toques. Por eso "no funcionaban" en el móvil.
+            Ahora: menos alto (36 px, suficiente para el gesto), sólo el ancho
+            de la barrita central, y por DEBAJO de los botones (z-40). */}
         <div
-          className="absolute top-0 left-0 right-0 h-14 z-50 flex justify-center pt-3 md:hidden cursor-grab active:cursor-grabbing select-none"
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-9 z-40 flex justify-center pt-3 md:hidden cursor-grab active:cursor-grabbing select-none"
           onPointerDown={onDragStart}
           role="button"
           tabIndex={-1}
@@ -459,24 +487,33 @@ function ModalContent({
                 size="md"
               />
 
-              {/* Action Buttons Container */}
-              <div className="absolute top-4 right-4 md:top-3 md:right-3 flex gap-2 z-50">
+              {/* Action Buttons Container
+                  Fase 22: z-[60] para quedar por encima de la franja de
+                  arrastre (z-40) y tamaño táctil de 44 px, el mínimo
+                  recomendado para el dedo. */}
+              <div className="absolute top-3 right-3 md:top-3 md:right-3 flex gap-2 z-[60]">
                 <button
+                  type="button"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={onClose}
-                  className="w-9 h-9 flex md:hidden items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#555] hover:bg-white active:scale-90 transition-all shadow-sm"
+                  aria-label="Cerrar"
+                  className="w-11 h-11 flex md:hidden items-center justify-center bg-white/80 backdrop-blur-md rounded-full text-[#555] hover:bg-white active:scale-90 transition-all shadow-sm"
                 >
-                  <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
+                  <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
                 </button>
 
                 <button
+                  type="button"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={toggleFavorite}
-                  className="w-9 h-9 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full text-[#555] hover:text-[#e57373] hover:bg-white active:scale-90 transition-all shadow-sm"
+                  aria-label={isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                  aria-pressed={isFavorite}
+                  className="w-11 h-11 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-full text-[#555] hover:text-[#e57373] hover:bg-white active:scale-90 transition-all shadow-sm"
                 >
                   <span
-                    className={`material-symbols-outlined text-[20px] ${isFavorite ? 'text-[#e57373]' : ''}`}
+                    className={`material-symbols-outlined text-[22px] ${isFavorite ? 'text-[#e57373]' : ''}`}
                     style={{ fontVariationSettings: isFavorite ? "'FILL' 1, 'wght' 300" : "'FILL' 0, 'wght' 300" }}
+
                   >
                     favorite
                   </span>
@@ -677,9 +714,29 @@ function ModalContent({
           </div>
         </div>
 
+        {/* Fase 22: añadir a la lista de consulta.
+            Va encima del pie, a todo el ancho, porque es la acción nueva:
+            permite juntar varios productos y preguntar por todos de una vez. */}
+        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pb-2 bg-white dark:bg-zinc-900 z-20">
+          <button
+            type="button"
+            onClick={addToInquiryList}
+            className={`flex w-full items-center justify-center gap-2 h-11 rounded-2xl text-[13px] font-semibold transition-colors active:scale-[0.98] ${
+              inInquiry
+                ? 'bg-[#eef7ee] text-[#2e7d32] dark:bg-zinc-800 dark:text-[#7bc47f]'
+                : 'bg-[#f2f2f0] text-[#1a1a1a] dark:bg-zinc-800 dark:text-zinc-100 hover:bg-[#e8e8e4] dark:hover:bg-zinc-700'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: inInquiry ? "'FILL' 1" : "'FILL' 0, 'wght' 300" }}>
+              {inInquiry ? 'check_circle' : 'add_shopping_cart'}
+            </span>
+            {inInquiry ? 'Añadido a tu lista' : 'Añadir a mi lista de consulta'}
+          </button>
+        </div>
+
         {/* Pie de acciones — hermano real del área desplazable (no flotante).
             `shrink-0` impide que se comprima cuando el contenido es largo. */}
-        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pt-4 pb-modal-footer border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2.5 md:gap-3 z-20">
+        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pt-1 pb-modal-footer border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2.5 md:gap-3 z-20">
           <Link
             href={`/product?id=${product.id}`}
             /* `min-w-0` + `text-center` evitan que el texto largo desborde en

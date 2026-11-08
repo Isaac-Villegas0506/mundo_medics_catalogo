@@ -10,6 +10,7 @@ import BottomNav from '@/components/navigation/BottomNav';
 import ProductCard from '@/components/ui/ProductCard';
 import { CARD_FIELDS, PAGE_SIZE } from '@/utils/catalogConstants';
 import { sanitizeSearchTerm } from '@/utils/searchTerm';
+import InquiryPanel from '@/components/ui/InquiryPanel';
 
 /**
  * Fase 9 (rendimiento): los modales se cargan BAJO DEMANDA.
@@ -354,6 +355,10 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
       </main>
 
       <BottomNav />
+
+      {/* Fase 22: barra flotante con la lista de consulta.
+          Sólo se pinta si el cliente ha guardado algún producto. */}
+      <InquiryPanel />
 
       <ProductModal
         isOpen={isModalOpen}
