@@ -35,6 +35,9 @@ export default function ProductEditorPage() {
     sizes: ['S', 'M', 'L', 'XL'],
     color_name: '',
     color_hex_codes: [] as string[],
+    /* Fase 19: imagen por color. Mapa hex -> URL, para que el modal cambie la
+       foto al elegir un color. */
+    color_images: {} as Record<string, string>,
     tags: [] as string[],
     gallery: [] as string[],
     image_url: '', // Main image, usually gallery[0]
@@ -73,6 +76,7 @@ export default function ProductEditorPage() {
         sizes: data.sizes || [],
         color_name: data.color_name || '',
         color_hex_codes: data.color_hex_codes || [],
+        color_images: (data.color_images as Record<string, string>) || {},
         tags: data.tags || [],
         gallery: data.gallery || (data.image_url ? [data.image_url] : []),
         image_url: data.image_url || '',
@@ -114,6 +118,49 @@ export default function ProductEditorPage() {
 
   const removeColor = (hex: string) => {
     handleChange('color_hex_codes', formData.color_hex_codes.filter(c => c !== hex));
+    /* Fase 19: al quitar un color se borra también su imagen, para no dejar
+       entradas huérfanas en el mapa. */
+    const next = { ...formData.color_images };
+    delete next[hex];
+    handleChange('color_images', next);
+  };
+
+  /**
+   * Fase 19 — sube la foto asociada a un color concreto.
+   * Mismo flujo que la galería (ImageKit), pero guarda la URL en
+   * `color_images[hex]` en vez de en el array de la galería.
+   */
+  const [uploadingColorHex, setUploadingColorHex] = useState<string | null>(null);
+
+  const uploadColorImage = async (hex: string, file: File) => {
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    setUploadingColorHex(hex);
+    setFormError(null);
+
+    try {
+      const url = await uploadToImageKit(file);
+      handleChange('color_images', { ...formData.color_images, [hex]: url });
+    } catch (err) {
+      console.error('Error al subir la imagen del color:', err);
+      setFormError(
+        err instanceof Error
+          ? `No se pudo subir la imagen: ${err.message}`
+          : 'No se pudo subir la imagen del color.'
+      );
+    } finally {
+      setUploadingColorHex(null);
+    }
+  };
+
+  const removeColorImage = (hex: string) => {
+    const next = { ...formData.color_images };
+    delete next[hex];
+    handleChange('color_images', next);
   };
 
   const toggleTag = (tag: string) => {
@@ -563,25 +610,102 @@ export default function ProductEditorPage() {
                   placeholder="Ej. Blanco Nieve o Pack Mixto"
                 />
                 
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Fase 19: cada color puede llevar su propia foto.
+                    Al pulsar el circulito de imagen se sube la foto de ese
+                    color; en el modal del cliente, tocar el color cambia la
+                    foto principal. */}
+                <div className="mb-4">
+                  <p className="mb-2 text-[11px] text-[#aaa]">
+                    Opcional: añade una foto por color. En el catálogo, al tocar un color se verá su foto.
+                  </p>
+
                   <div className="flex flex-wrap gap-2">
-                    {formData.color_hex_codes.map((hex, i) => (
-                      <div key={i} className="relative group shrink-0">
-                        <div 
-                          className="w-10 h-10 rounded-full border border-black/10 shadow-sm flex items-center justify-center cursor-pointer"
-                          style={{ background: hex }}
-                        />
-                        <button 
-                          onClick={() => removeColor(hex)}
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-black text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    {formData.color_hex_codes.map((hex, i) => {
+                      const imageUrl = formData.color_images[hex];
+                      const isUploading = uploadingColorHex === hex;
+
+                      return (
+                        <div
+                          key={i}
+                          className="relative flex items-center gap-2 rounded-2xl border border-[#ece9e2] bg-white p-1.5 pr-2.5"
                         >
-                          <span className="material-symbols-outlined text-[10px]">close</span>
-                        </button>
-                      </div>
-                    ))}
+                          {/* Muestra de color */}
+                          <span
+                            className="h-8 w-8 shrink-0 rounded-full border border-black/10 shadow-sm"
+                            style={{ background: hex }}
+                            title={hex}
+                          />
+
+                          {/* Foto del color (o botón para añadirla) */}
+                          {imageUrl ? (
+                            <div className="relative">
+                              <div className="h-8 w-8 overflow-hidden rounded-lg border border-black/5 bg-[#f4f2f0]">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={imageUrl} alt={`Color ${hex}`} className="h-full w-full object-cover" />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeColorImage(hex)}
+                                aria-label={`Quitar la foto del color ${hex}`}
+                                className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-black text-white"
+                              >
+                                <span className="material-symbols-outlined text-[10px]">close</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <label
+                              className={`flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-[#f4f2f0] px-2 text-[11px] font-medium text-[#666] transition-colors hover:bg-[#eceae6] ${
+                                isUploading ? 'pointer-events-none opacity-60' : ''
+                              }`}
+                              title="Añadir foto de este color"
+                            >
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={isUploading}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) uploadColorImage(hex, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                              <span className="material-symbols-outlined text-[14px]">
+                                {/* Se usa un spinner CSS en vez de un icono:
+                                    `progress_activity` no está en la fuente y
+                                    se vería como texto. */}
+                                {!isUploading && 'add_photo_alternate'}
+                              </span>
+                              {isUploading && (
+                                <span
+                                  className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[#bbb] border-t-[#555]"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              {isUploading ? 'Subiendo' : 'Foto'}
+                            </label>
+                          )}
+
+                          {/* Quitar el color */}
+                          <button
+                            type="button"
+                            onClick={() => removeColor(hex)}
+                            aria-label={`Quitar el color ${hex}`}
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[#bbb] transition-colors hover:bg-[#f4f2f0] hover:text-[#c62828]"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">close</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {formData.color_hex_codes.length === 0 && (
+                      <p className="text-xs text-[#bbb]">Aún no has añadido colores.</p>
+                    )}
                   </div>
-                  
-                  <div className="flex flex-wrap items-center gap-2 border-l border-[#ece9e2] pl-3">
+                </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#ece9e2] pt-3">
                     <div className="relative w-10 h-10 shrink-0 rounded-full border border-black/10 shadow-sm overflow-hidden group cursor-pointer">
                       <div 
                         className="absolute inset-0 pointer-events-none"
@@ -607,7 +731,6 @@ export default function ProductEditorPage() {
                       Añadir Color
                     </button>
                   </div>
-                </div>
               </div>
             </div>
           </div>

@@ -12,6 +12,11 @@ export interface Product {
   name: string;
   color_name: string;
   color_hex_codes: string[];
+  /**
+   * Fase 19: mapa color (hex) -> URL de imagen.
+   * Permite que al elegir un color en el modal se muestre la foto de ese color.
+   */
+  color_images?: Record<string, string>;
   image_url: string | null;
   gallery?: string[];
   action_text: string;

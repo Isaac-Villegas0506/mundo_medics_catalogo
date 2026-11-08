@@ -231,16 +231,37 @@ function ModalContent({
     return images;
   }, [product.image_url, product.gallery]);
 
+  /* Fase 19: imagen del color seleccionado.
+     Si el producto tiene una foto para ese color, se muestra DELANTE de la
+     galería, así al tocar un color la foto cambia al instante sin salir del
+     carrusel ni perder las demás imágenes. */
+  const colorImages = (product.color_images || {}) as Record<string, string>;
+  const selectedHex = product.color_hex_codes?.[selectedColorIndex];
+  const selectedColorImage = selectedHex ? colorImages[selectedHex] : undefined;
+
+  const galleryWithColor = React.useMemo(() => {
+    if (!selectedColorImage) return allImages;
+    // Se evita duplicar si la foto del color ya estaba en la galería.
+    const rest = allImages.filter((img) => img !== selectedColorImage);
+    return [selectedColorImage, ...rest];
+  }, [selectedColorImage, allImages]);
+
+  /* Al cambiar de color, si ese color tiene foto propia, el carrusel salta a
+     ella (posición 0). Si no tiene, se mantiene la imagen actual. */
+  React.useEffect(() => {
+    if (selectedColorImage) setCurrentImageIndex(0);
+  }, [selectedColorImage, selectedColorIndex]);
+
   /* Fase 7 (1.4): deslizar el dedo para cambiar de imagen (sin librerías). */
   const goNextImage = React.useCallback(
-    () => setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1)),
-    [allImages.length]
+    () => setCurrentImageIndex((prev) => (prev === galleryWithColor.length - 1 ? 0 : prev + 1)),
+    [galleryWithColor.length]
   );
   const goPrevImage = React.useCallback(
-    () => setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1)),
-    [allImages.length]
+    () => setCurrentImageIndex((prev) => (prev === 0 ? galleryWithColor.length - 1 : prev - 1)),
+    [galleryWithColor.length]
   );
-  const swipeHandlers = useSwipeGallery(goNextImage, goPrevImage, allImages.length > 1);
+  const swipeHandlers = useSwipeGallery(goNextImage, goPrevImage, galleryWithColor.length > 1);
 
   const buildWhatsappMessage = () => {
     // Use env var so it always points to the real domain, never localhost
@@ -360,7 +381,7 @@ function ModalContent({
               className="sticky top-0 w-full h-full bg-[#eeecea] md:rounded-[20px] overflow-hidden flex items-center justify-center relative touch-pan-y"
               {...swipeHandlers}
             >
-              {allImages.length > 0 ? (
+              {galleryWithColor.length > 0 ? (
                 <>
                   {/* Fase 10: el parallax ahora lo calcula el handler de scroll
                       nativo (estado `parallax`) en lugar de useTransform. */}
@@ -377,7 +398,7 @@ function ModalContent({
                     <Image
                       alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
                       className="object-contain transition-all duration-500 img-reveal pointer-events-none"
-                      src={allImages[currentImageIndex]}
+                      src={galleryWithColor[currentImageIndex]}
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
@@ -395,7 +416,7 @@ function ModalContent({
                   </button>
 
                   {/* Carousel Controls */}
-                  {allImages.length > 1 && (
+                  {galleryWithColor.length > 1 && (
                     <>
                       <div className="absolute inset-y-0 left-0 flex items-center">
                         <button
@@ -417,7 +438,7 @@ function ModalContent({
                           para no quedar bajo el panel de contenido, que se
                           superpone 28px sobre la imagen. */}
                       <div className="absolute bottom-10 left-0 right-0 z-10 flex justify-center gap-1.5 md:bottom-4">
-                        {allImages.map((_, idx) => (
+                        {galleryWithColor.map((_, idx) => (
                           <div
                             key={idx}
                             className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-[#1a1a1a]' : 'bg-white/60'}`}
@@ -504,17 +525,38 @@ function ModalContent({
                     Color: <span className="font-normal normal-case text-[#888] dark:text-zinc-400 tracking-normal ml-1">{selectedColor?.label}</span>
                   </span>
                   <div className="flex gap-2.5">
-                    {product.color_hex_codes.map((hex, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setSelectedColorIndex(i)}
-                        aria-label={`Color ${hex.toUpperCase()}`}
-                        aria-pressed={i === selectedColorIndex}
-                        className={`mm-tap w-11 h-11 rounded-full border transition-all ${i === selectedColorIndex ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900' : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
-                          }`}
-                        style={{ background: hex }}
-                      />
-                    ))}
+                    {product.color_hex_codes.map((hex, i) => {
+                      /* Fase 19: se marca con un punto qué colores tienen foto
+                         propia, para que el cliente sepa que al tocarlos la
+                         imagen cambia. */
+                      const hasOwnImage = Boolean(colorImages[hex]);
+                      const isActive = i === selectedColorIndex;
+
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedColorIndex(i)}
+                          aria-label={
+                            hasOwnImage
+                              ? `Color ${hex.toUpperCase()} (con foto propia)`
+                              : `Color ${hex.toUpperCase()}`
+                          }
+                          aria-pressed={isActive}
+                          className={`mm-tap relative w-11 h-11 rounded-full border transition-all ${isActive ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900' : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
+                            }`}
+                          style={{ background: hex }}
+                        >
+                          {hasOwnImage && (
+                            <span
+                              className="absolute bottom-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-white shadow-sm"
+                              aria-hidden="true"
+                            >
+                              <span className="material-symbols-outlined text-[9px] text-[#1a1a1a]">image</span>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -669,7 +711,7 @@ function ModalContent({
       {/* Visor a pantalla completa con zoom (Fase 8) */}
       <ImageLightbox
         isOpen={isLightboxOpen}
-        images={allImages}
+        images={galleryWithColor}
         index={currentImageIndex}
         alt={product.name}
         onClose={() => setIsLightboxOpen(false)}
