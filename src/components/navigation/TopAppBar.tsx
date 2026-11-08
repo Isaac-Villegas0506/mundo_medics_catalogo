@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
+import { useWhatsappNumber } from '@/hooks/useWhatsappNumber';
+import { buildWhatsappUrl } from '@/utils/whatsapp';
 
 interface TopAppBarProps {
   onSearch?: (query: string) => void;
@@ -23,6 +25,7 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const whatsappNumber = useWhatsappNumber();
   const [mounted, setMounted] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,6 +70,16 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
     { name: 'Categorías', href: '/categories', icon: 'category' },
     { name: 'Favoritos', href: '/favorites', icon: 'favorite' },
   ];
+
+  /* Fase 14: «Contactar» en el menú lateral de escritorio.
+     Antes sólo estaba en la barra inferior de móvil, así que desde un PC no
+     había forma de abrir WhatsApp desde la navegación.
+     Usa el mismo número normalizado y deshabilita el enlace si no hay número
+     configurado (igual que la barra inferior). */
+  const whatsappUrl = buildWhatsappUrl(
+    whatsappNumber,
+    'Hola, tengo una consulta desde la tienda.'
+  );
 
   return (
     <>
@@ -194,6 +207,41 @@ export default function TopAppBar({ onSearch }: TopAppBarProps) {
                 </Link>
               );
             })}
+
+            {/* Fase 14: «Contactar» — abre WhatsApp. En escritorio es la única
+                vía de contacto desde la navegación (la barra inferior es móvil). */}
+            {whatsappUrl ? (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all text-[#444] dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800 hover:text-[#1a1a1a] dark:hover:text-zinc-100 hover:shadow-sm"
+              >
+                <span
+                  className="material-symbols-outlined text-[21px] text-[#25D366]"
+                  style={{ fontVariationSettings: "'wght' 300" }}
+                >
+                  chat_bubble
+                </span>
+                <span className="font-medium text-[15px] text-[#1a1a1a] dark:text-zinc-300">
+                  Contactar
+                </span>
+              </a>
+            ) : (
+              <span
+                aria-disabled="true"
+                title="WhatsApp no configurado"
+                className="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-[#ccc] dark:text-zinc-600 cursor-not-allowed"
+              >
+                <span
+                  className="material-symbols-outlined text-[21px]"
+                  style={{ fontVariationSettings: "'wght' 300" }}
+                >
+                  chat_bubble
+                </span>
+                <span className="font-medium text-[15px]">Contactar</span>
+              </span>
+            )}
           </div>
 
           {/* Sidebar Footer */}

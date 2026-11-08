@@ -1,0 +1,28 @@
+fix(ui): el arrastre del modal por fin funciona y Contactar en la barra lateral
+
+1. ARRASTRE PARA CERRAR EL MODAL (causa raiz encontrada)
+
+   La animacion de entrada `.mm-in-sheet` usaba el fill-mode `both`, que RETIENE
+   `transform: translateY(0)` de forma permanente al terminar. Como las
+   animaciones CSS ganan sobre el `transform` normal, `.mm-draggable` nunca
+   podia aplicar su desplazamiento: el panel no se movia por mucho que se
+   arrastrara. Ese era el motivo real de que "no hiciera nada", no el umbral.
+
+   - `.mm-in-sheet` pasa de `both` a `backwards`: conserva el estado inicial
+     durante el retardo, pero deja de aplicar al terminar, asi que el arrastre
+     vuelve a funcionar.
+   - Los manejadores pointermove/pointerup se registran en `window` en vez de
+     depender de `setPointerCapture`, que podia fallar y dejar el gesto a medias.
+   - Umbral mas permisivo: 80 px (antes 100) y velocidad 0,35 px/ms (antes 0,4).
+
+2. "CONTACTAR" EN LA BARRA LATERAL DE ESCRITORIO
+
+   Antes solo existia en la barra inferior de movil, asi que desde un PC no habia
+   forma de abrir WhatsApp desde la navegacion.
+   - Nuevo enlace en el menu lateral con el icono chat_bubble.
+   - Usa `buildWhatsappUrl` (el mismo numero normalizado que la barra inferior).
+   - Si no hay numero configurado se muestra deshabilitado, no un enlace roto.
+
+Verificado: tsc 0 errores, build OK, 6 rutas correctas (incluidos los 404),
+"Contactar" presente en el bundle y el CSS compilado con `backwards` y
+`transform` sin conflicto.

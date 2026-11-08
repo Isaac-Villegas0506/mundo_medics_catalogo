@@ -131,54 +131,72 @@ function ModalContent({
     };
   }, []);
 
-  /* Fase 10/11: arrastre del panel desde el asa móvil, con Pointer Events.
-     Antes lo hacía `useDragControls` de framer-motion.
+  /* Fase 10/11/14: arrastre del panel desde el asa móvil, con Pointer Events.
 
-     Correcciones de la Fase 11:
-       - `dragY` se leía del closure en `onDragEnd`, así que podía llegar
-         desactualizado y el gesto no cerraba. Ahora el desplazamiento se guarda
-         en el ref, que siempre tiene el valor real.
-       - Al soltar sin cerrar, el panel vuelve a su sitio CON transición. */
+     Correcciones aplicadas:
+       - Fase 11: `dragY` se leía del closure en `onDragEnd`; ahora la distancia
+         vive en el ref, que siempre tiene el valor real.
+       - Fase 11: al soltar sin cerrar había un salto seco; `settling` activa la
+         transición para que vuelva deslizándose.
+       - Fase 14: la animación `.mm-in-sheet` usaba `both`, que retenía
+         `transform` indefinidamente y ANULABA este arrastre. Ahora usa
+         `backwards` (ver globals.css). Esa era la causa de que el gesto
+         "no hiciera nada".
+       - Fase 14: se escucha en `window` en vez de depender de
+         `setPointerCapture`, que podía fallar y dejar el gesto a medias. */
   const [dragY, setDragY] = React.useState(0);
-  /* `settling` aplica la transición de vuelta; mientras se arrastra, no hay
-     transición para que el panel siga al dedo. */
   const [settling, setSettling] = React.useState(false);
   const dragState = useRef<{ startY: number; startAt: number; lastDy: number } | null>(null);
 
   const onDragStart = (e: React.PointerEvent) => {
+    // Sólo botón/dedo principal.
+    if (e.button !== 0) return;
     dragState.current = { startY: e.clientY, startAt: Date.now(), lastDy: 0 };
     setSettling(false);
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 
-  const onDragMove = (e: React.PointerEvent) => {
-    if (!dragState.current) return;
-    const dy = Math.max(0, e.clientY - dragState.current.startY);
-    dragState.current.lastDy = dy;
-    setDragY(dy);
-  };
+  /* El movimiento se escucha en window: así el gesto no se corta si el dedo
+     sale del asa o del propio panel. */
+  React.useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!dragState.current) return;
+      const dy = Math.max(0, e.clientY - dragState.current.startY);
+      dragState.current.lastDy = dy;
+      setDragY(dy);
+    };
 
-  const onDragEnd = () => {
-    const state = dragState.current;
-    if (!state) return;
-    dragState.current = null;
+    const onUp = () => {
+      const state = dragState.current;
+      if (!state) return;
+      dragState.current = null;
 
-    const elapsed = Math.max(Date.now() - state.startAt, 1);
-    const distance = state.lastDy;
-    const velocity = distance / elapsed; // px/ms
+      const elapsed = Math.max(Date.now() - state.startAt, 1);
+      const distance = state.lastDy;
+      const velocity = distance / elapsed; // px/ms
 
-    if (distance > 100 || velocity > 0.4) {
-      // Se cierra: el panel sigue bajando hasta salir de pantalla (la clase de
-      // salida la aplica `closing`, que activa onClose).
-      setDragY(distance);
-      onClose();
-      return;
-    }
+      // Umbral más permisivo que antes (era 100 px): en pantallas pequeñas
+      // 80 px ya es un gesto claro.
+      if (distance > 80 || velocity > 0.35) {
+        setDragY(distance);
+        onClose();
+        return;
+      }
 
-    // No llegó al umbral: vuelve a su sitio deslizándose.
-    setSettling(true);
-    setDragY(0);
-  };
+      // No llegó al umbral: vuelve a su sitio deslizándose.
+      setSettling(true);
+      setDragY(0);
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [onClose]);
 
   /* Seguridad: si el modal se reutiliza para otro producto, el desplazamiento
      vuelve a cero. */
@@ -301,15 +319,13 @@ function ModalContent({
         }}
       >
         {/* Zona de arrastre (sólo móvil).
-            Fase 11: se amplió a todo el ancho y 56 px de alto. Antes medía
-            128×48 px, así que era fácil fallar el gesto y parecía que "no
-            funciona". La barra visible sigue siendo pequeña. */}
+            Todo el ancho y 56 px de alto: antes medía 128×48 px, así que era
+            fácil fallar el gesto y parecía que "no funcionaba".
+            Fase 14: los manejadores de move/up están en `window`, aquí sólo el
+            inicio. La barra visible sigue siendo pequeña. */}
         <div
           className="absolute top-0 left-0 right-0 h-14 z-50 flex justify-center pt-3 md:hidden cursor-grab active:cursor-grabbing select-none"
           onPointerDown={onDragStart}
-          onPointerMove={onDragMove}
-          onPointerUp={onDragEnd}
-          onPointerCancel={onDragEnd}
           role="button"
           tabIndex={-1}
           aria-label="Desliza hacia abajo para cerrar"

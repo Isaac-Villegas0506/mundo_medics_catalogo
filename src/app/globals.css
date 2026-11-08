@@ -384,8 +384,15 @@
     animation: mm-slide-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  /* Fase 14: `backwards` y NO `both`.
+     Con `both`, la animación retiene `transform: translateY(0)` de forma
+     permanente al terminar, y como las animaciones CSS ganan sobre el
+     `transform` normal, `.mm-draggable` nunca podía mover el panel. Ese era el
+     motivo de que el arrastre para cerrar «no hiciera nada».
+     Con `backwards` se conserva el estado inicial durante el retardo, pero al
+     acabar la animación deja de aplicar, así el arrastre vuelve a funcionar. */
   .mm-in-sheet {
-    animation: mm-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: mm-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
   .mm-in-pop {
