@@ -431,18 +431,25 @@
     animation: mm-slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
   }
 
-  /* Fase 11: arrastre del modal en móvil.
-     El desplazamiento se pasa por la variable `--mm-drag-y`. Se usa una raíz
-     anidada (`translate`) para NO pisar el centrado de escritorio de Tailwind
-     (`md:-translate-x-1/2 md:-translate-y-1/2`), que usa `transform`. */
+  /* Fase 11/13: arrastre del modal en móvil.
+     El desplazamiento se pasa por la variable `--mm-drag-y`.
+
+     ⚠️ IMPORTANTE: aquí se usa `transform`, NO `translate`.
+     Tailwind v4 implementa `-translate-x-1/2` / `-translate-y-1/2` con la
+     propiedad `translate`. Si esta clase también declarara `translate`, pisaría
+     el centrado y el modal saldría desplazado en escritorio (bug reportado).
+
+     `transform` está libre, así que ambas se componen sin conflicto: primero
+     actúa `translate` (el centrado de Tailwind) y después este `transform`
+     (el arrastre). */
   .mm-draggable {
-    translate: 0 var(--mm-drag-y, 0px);
+    transform: translateY(var(--mm-drag-y, 0px));
   }
 
   @media (min-width: 768px) {
-    /* En escritorio el panel está centrado y no se arrastra. */
+    /* En escritorio el panel va centrado y no se arrastra. */
     .mm-draggable {
-      translate: none;
+      transform: none;
     }
   }
 

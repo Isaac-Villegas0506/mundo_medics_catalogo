@@ -151,7 +151,32 @@ export default function AdminProductsPage() {
 
         {/* Table Body (Reorderable) */}
         {loading ? (
-          <div className="p-10 text-center text-[#888]">Cargando productos...</div>
+          /* Fase 13: filas de esqueleto en vez de "Cargando productos...". */
+          <div aria-hidden="true">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-1 md:grid-cols-[auto_3fr_1.5fr_1fr_1.5fr_1fr] gap-4 p-4 md:p-5 items-center border-b border-[#ece9e2] last:border-none"
+              >
+                <div className="hidden md:block h-5 w-5 rounded skeleton-shimmer" />
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl skeleton-shimmer shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-3.5 w-2/3 rounded skeleton-shimmer mb-2" />
+                    <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
+                  </div>
+                </div>
+                <div className="hidden md:block h-6 w-20 rounded-lg skeleton-shimmer" />
+                <div className="hidden md:block h-4 w-16 rounded skeleton-shimmer" />
+                <div className="hidden md:block h-6 w-24 rounded-lg skeleton-shimmer" />
+                <div className="hidden md:flex gap-2 justify-end">
+                  <div className="h-8 w-8 rounded-full skeleton-shimmer" />
+                  <div className="h-8 w-8 rounded-full skeleton-shimmer" />
+                  <div className="h-8 w-8 rounded-full skeleton-shimmer" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : loadError ? (
           <div className="p-10 text-center flex flex-col items-center">
             <span className="material-symbols-outlined text-[#ddd] text-[32px] mb-3">wifi_off</span>

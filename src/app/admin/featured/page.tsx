@@ -199,7 +199,18 @@ export default function AdminFeaturedPage() {
 
           <div className="flex-1 overflow-y-auto pr-2 no-scrollbar" style={{ maxHeight: '60vh' }}>
             {loading ? (
-              <div className="text-center p-10 text-[#888]">Cargando catálogo...</div>
+              /* Fase 13: filas de esqueleto en vez de "Cargando catálogo...". */
+              <div className="flex flex-col gap-2" aria-hidden="true">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-2xl">
+                    <div className="h-12 w-12 rounded-xl skeleton-shimmer shrink-0" />
+                    <div className="flex-1">
+                      <div className="h-3.5 w-2/3 rounded skeleton-shimmer mb-2" />
+                      <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="flex flex-col gap-2">
                 {products.map(product => {

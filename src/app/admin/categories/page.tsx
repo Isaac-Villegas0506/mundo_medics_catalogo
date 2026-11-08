@@ -300,7 +300,18 @@ export default function AdminCategoriesPage() {
           </div>
 
           {loading ? (
-            <div className="p-10 text-center text-[#888]">Cargando...</div>
+            <div aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border-b border-[#ece9e2] last:border-none">
+                  <div className="h-5 w-5 rounded skeleton-shimmer shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-3.5 w-2/5 rounded skeleton-shimmer mb-2" />
+                    <div className="h-2.5 w-1/4 rounded skeleton-shimmer" />
+                  </div>
+                  <div className="h-8 w-8 rounded-full skeleton-shimmer" />
+                </div>
+              ))}
+            </div>
           ) : categories.length === 0 ? (
             <div className="p-10 text-center text-[#888]">No hay categorías. Crea una.</div>
           ) : (

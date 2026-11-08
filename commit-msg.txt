@@ -1,0 +1,30 @@
+fix(ui): centrado del modal en PC y esqueletos en lugar de textos de carga
+
+1. MODAL DESPLAZADO EN ESCRITORIO (causa raiz encontrada)
+   Tailwind v4 implementa -translate-x-1/2 / -translate-y-1/2 con la propiedad
+   CSS `translate`. La clase .mm-draggable (Fase 11) declaraba tambien
+   `translate: 0 var(--mm-drag-y, 0px)`, asi que PISABA ese centrado y el modal
+   salia desplazado. Verificado en el CSS compilado:
+     .-translate-x-1/2 { translate: var(--tw-translate-x) var(--tw-translate-y) }
+     .mm-draggable     { translate: 0 var(--mm-drag-y, 0px) }   <- conflicto
+   Ahora .mm-draggable usa `transform`, que Tailwind deja libre, asi que ambas
+   se componen: primero el centrado (translate) y luego el arrastre (transform).
+   En escritorio se anula con `transform: none`.
+
+2. "CARGANDO CATALOGO" AL RECARGAR
+   La pagina tenia un <Suspense> con fallback de texto que tapaba al loading.tsx
+   del segmento. Al recargar se veia la frase centrada en vez del esqueleto.
+   Se elimino ese Suspense y el contenido se resuelve directamente, de modo que
+   el esqueleto de (catalog)/loading.tsx es lo que se muestra.
+
+3. TEXTOS DE CARGA SUSTITUIDOS POR ESQUELETOS
+   - admin/page.tsx: barras del grafico y lista de destacados.
+   - admin/products/page.tsx: tabla de productos (6 filas).
+   - admin/featured/page.tsx: lista del catalogo.
+   - admin/categories/page.tsx: lista de categorias.
+   - admin/settings/page.tsx: paneles de ajustes.
+   Se conservan "Cargando productos incluidos..." del detalle y del modal: es
+   una lista corta dentro de un bloque ya visible, con contexto propio.
+
+Verificado: tsc 0 errores, build OK, matriz de 8 rutas correcta (incluidos los
+404 de /product), CSS compilado sin conflicto entre translate y transform.

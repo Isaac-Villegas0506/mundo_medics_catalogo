@@ -152,7 +152,17 @@ export default function AdminSettingsPage() {
       )}
 
       {isLoading ? (
-        <div className="p-10 text-center">Cargando configuración...</div>
+        /* Fase 13: esqueleto de los paneles de ajustes. */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="w-full bg-white rounded-3xl p-6 border border-black/5">
+              <div className="h-5 w-36 rounded skeleton-shimmer mb-5" />
+              <div className="h-11 w-full rounded-xl skeleton-shimmer mb-3" />
+              <div className="h-11 w-full rounded-xl skeleton-shimmer mb-3" />
+              <div className="h-11 w-2/3 rounded-xl skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Contacto */}

@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import CatalogClient from './CatalogClient';
 import { createPublicClient } from '@/utils/supabase/publicServer';
@@ -59,22 +58,12 @@ export default async function CatalogPage({
 }: {
   searchParams: Promise<{ category?: string }>;
 }) {
+  /* Fase 13: se eliminó el <Suspense> con el texto "Cargando catálogo…".
+     Ese fallback tapaba al `loading.tsx` del segmento, así que al recargar el
+     usuario veía una frase centrada en vez del esqueleto con la estructura.
+     `loading.tsx` ya cubre la espera con el esqueleto completo de la grilla. */
   const { category } = await searchParams;
-
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#f8f8f6] flex items-center justify-center text-[#777] text-sm">
-          Cargando catálogo…
-        </div>
-      }
-    >
-      <CatalogContent category={category} />
-    </Suspense>
-  );
-}
-
-async function CatalogContent({ category }: { category?: string }) {
   const initial = await getInitialData(category);
+
   return <CatalogClient initial={initial} />;
 }

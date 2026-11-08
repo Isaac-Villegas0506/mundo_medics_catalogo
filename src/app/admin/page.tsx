@@ -121,7 +121,14 @@ export default function AdminPage() {
                 </div>
               );
             }) : (
-              <div className="w-full text-center text-[#aaa] text-sm pb-10">Cargando...</div>
+              /* Fase 13: esqueleto de barras en vez del texto "Cargando...". */
+              <div className="flex w-full items-end justify-between gap-2 h-[180px] pt-4" aria-hidden="true">
+                {[70, 45, 90, 60, 35].map((h, i) => (
+                  <div key={i} className="flex-1 flex flex-col justify-end h-full">
+                    <div className="w-full skeleton-shimmer rounded-t-lg" style={{ height: `${h}%` }} />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
           <div className="flex justify-between mt-4 text-[11px] font-medium text-[#aaa] uppercase tracking-wider overflow-hidden">
@@ -144,7 +151,16 @@ export default function AdminPage() {
           
           <div className="flex flex-col gap-3">
             {loading ? (
-              <div className="text-center py-10 text-[#888]">Cargando productos...</div>
+              /* Fase 13: filas de esqueleto en vez de "Cargando productos...". */
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-3" aria-hidden="true">
+                  <div className="w-14 h-14 rounded-xl skeleton-shimmer shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-3.5 w-2/3 rounded skeleton-shimmer mb-2" />
+                    <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
+                  </div>
+                </div>
+              ))
             ) : products.filter(p => p.is_featured).length === 0 ? (
               <div className="text-center py-10 text-[#888]">No hay productos destacados.</div>
             ) : (
