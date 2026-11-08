@@ -124,8 +124,14 @@ export default function InquiryPanel() {
           aria-modal="true"
           aria-labelledby="inquiry-title"
         >
+          {/* Fase 27: tamaño según dispositivo.
+              - Móvil: hoja inferior, máx. 60dvh, con relleno de la nav.
+              - Escritorio: tarjeta centrada más ancha (560px) y alta
+                (máx. 520px), sin el relleno de la nav (no hay barra inferior).
+              Antes eran 440px tanto en uno como en otro: en PC se veía
+              pequeña y encajonada. */}
           <div
-            className="flex max-h-[60dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[24px] bg-white pb-bottom-nav mm-in-sheet md:rounded-[24px] md:pb-0"
+            className="flex max-h-[60dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[24px] bg-white pb-bottom-nav mm-in-sheet md:mb-0 md:max-h-[520px] md:max-w-[560px] md:rounded-[24px] md:pb-0"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Asa para cerrar arrastrando (sólo visual + botón) */}
@@ -154,10 +160,13 @@ export default function InquiryPanel() {
 
             {/* Productos: filas densas y desplazables */}
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-2">
+              {/* Fase 27: `last:mb-0` evita que el último producto sume su
+                  margen al relleno del contenedor (dejaba un hueco extra antes
+                  del botón de enviar). */}
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="mb-1.5 flex items-center gap-2.5 rounded-xl bg-[#f8f8f6] p-2"
+                  className="mb-1.5 flex items-center gap-2.5 rounded-xl bg-[#f8f8f6] p-2 last:mb-0"
                 >
                   <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#eeecea]">
                     {item.image_url ? (

@@ -377,13 +377,12 @@ function ModalContent({
           antes el spring de framer-motion). El arrastre del asa se gestiona con
           Pointer Events y se refleja en `translateY(dragY)` con transición CSS.
 
-          Fase 26: el panel ya NO tiene altura fija (`h-[92dvh]`). Ahora usa
-          `max-h-[92dvh]`, así se adapta a su contenido y no deja un bloque
-          blanco vacío cuando el producto tiene pocos datos. El modal se dibuja
-          ENCIMA de la barra de navegación (z-70 > z-40), así que no hay que
-          reservar su altura. */}
+          Fase 27: el panel vuelve a ALTURA FIJA en móvil (`h-[92dvh]`).
+          Con `max-h` el modal cambiaba de tamaño según el producto: uno con
+          pocos datos salía pequeño y otro con muchos llenaba la pantalla.
+          El cliente pidió tamaño estable y que se deslice para ver el resto. */}
       <div
-        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] max-h-[92dvh] md:max-h-[calc(100dvh-96px)] w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
+        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] h-[92dvh] md:h-[82dvh] max-h-[100dvh] md:max-h-[calc(100dvh-96px)] w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
         style={{
           /* El arrastre se aplica con la variable CSS `--mm-drag-y`, no con
              `transform` directo: así no se pisa el centrado de escritorio
@@ -423,22 +422,21 @@ function ModalContent({
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
         </button>
 
-        {/* Contenedor desplazable (Fase 26).
-            Antes tenía `flex-1`, que lo estiraba hasta llenar el modal AUNQUE
-            el contenido fuera corto: eso dejaba un hueco blanco grande entre
-            las tallas y el pie. Ahora crece sólo hasta su contenido
-            (`grow`, no `flex-1`) y el scroll aparece únicamente si hace falta. */}
+        {/* Contenedor desplazable (Fase 27).
+            Vuelve `flex-1`: con el panel a altura fija, este bloque ocupa el
+            espacio que queda entre arriba y el pie, y el cliente DESLIZA
+            dentro de él para ver el resto de la ficha. */}
         <div
           ref={scrollRef}
-          className="w-full min-h-0 grow overflow-y-auto overscroll-contain no-scrollbar flex flex-col md:flex-row"
+          className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar flex flex-col md:flex-row"
         >
           {/* Left: Image
-              Fase 23: en móvil la imagen pasa de `aspect-[4/5]` (≈125% del
-              ancho, unos 500 px en un teléfono) a una altura acotada de 32dvh.
-              Con la proporción anterior, el nombre del producto quedaba fuera
-              de pantalla y había que deslizar para verlo; ahora es visible al
-              abrir. En escritorio se mantiene el diseño de dos columnas. */}
-          <div className="relative w-full shrink-0 h-[30dvh] md:w-[45%] md:h-full md:px-5 md:py-5 md:pr-2.5 z-0">
+              Fase 27: la imagen vuelve a tener presencia. Con `h-[30dvh]` se
+              veía diminuta: queda un 42% de la pantalla, que en un móvil de
+              800px son ~336px de alto. El contenido sigue siendo alcanzable
+              deslizando, y el nombre del producto queda a la vista justo
+              debajo porque el panel de contenido solapa 12px. */}
+          <div className="relative w-full shrink-0 h-[42dvh] md:w-[45%] md:h-full md:px-5 md:py-5 md:pr-2.5 z-0">
             <div
               className="sticky top-0 w-full h-full bg-[#eeecea] md:rounded-[20px] overflow-hidden flex items-center justify-center relative touch-pan-y"
               {...swipeHandlers}
