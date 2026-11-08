@@ -1,0 +1,44 @@
+perf(categorias): server component, feedback al pulsar y arreglo del arrastre
+
+OPTIMIZACION DE CATEGORIAS (los 4 problemas reportados)
+
+1. Carga lenta: /categories era Client Component, asi que el HTML llegaba
+   vacio, habia que hidratar React y solo entonces corrian DOS consultas
+   SECUENCIALES (categorias -> productos por sus imagenes).
+   Ahora es Server Component: las consultas van en el servidor y el HTML llega
+   con las colecciones ya pintadas. Ademas es ESTATICA con revalidate=60
+   (antes figuraba como dinamica en el build).
+   Medido: 30 ms de respuesta; las 3 categorias estan en el HTML inicial.
+   Lighthouse movil: perf 81, TBT 262 ms, CLS 0.
+
+2. Demora al entrar a una categoria: ahora las tarjetas usan Link con
+   prefetch, asi que la portada filtrada se descarga antes de pulsar.
+
+3. Sin respuesta visual al pulsar: nuevo CategoryCard (cliente) que marca la
+   tarjeta como cargando AL INSTANTE con useTransition, mostrando overlay con
+   spinner y "Abriendo...". Antes el onClick no cambiaba nada en pantalla.
+
+4. Indicadores de carga: nuevos loading.tsx con esqueletos para /categories y
+   para la portada.
+
+ESTRUCTURA: la portada se movio al grupo de rutas (catalog) para que su
+loading.tsx NO envuelva a /product. En la Fase 7 un loading.tsx en la raiz
+hacia que /product respondiera 200 en vez de 404; verificado que el 404 sigue
+funcionando.
+
+ARREGLO DEL ARRASTRE DEL MODAL (que no animaba)
+- onDragEnd leia dragY del closure, asi que podia llegar desactualizado y el
+  gesto no cerraba. Ahora la distancia se guarda en el ref.
+- Al soltar sin cerrar habia un salto seco: nuevo estado settling que activa
+  la transicion CSS para que vuelva deslizandose.
+- El transform inline pisaba el centrado de escritorio
+  (md:-translate-x/-y-1/2). Ahora se usa la variable --mm-drag-y y la
+  propiedad CSS translate, que no interfiere con transform. Verificado en el
+  CSS compilado.
+- La zona de arrastre paso de 128x48px a todo el ancho x 56px: antes era facil
+  fallar el gesto y parecia que no funcionaba.
+
+ARREGLO CRITICO: next-env.d.ts estaba corrupto (253 bytes nulos). Regenerado.
+
+Verificado: tsc 0 errores, build OK, matriz de 11 rutas en verde (incluidos
+los 404), CSS mm-draggable compilado, categorias presentes en el HTML.

@@ -431,6 +431,21 @@
     animation: mm-slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
   }
 
+  /* Fase 11: arrastre del modal en móvil.
+     El desplazamiento se pasa por la variable `--mm-drag-y`. Se usa una raíz
+     anidada (`translate`) para NO pisar el centrado de escritorio de Tailwind
+     (`md:-translate-x-1/2 md:-translate-y-1/2`), que usa `transform`. */
+  .mm-draggable {
+    translate: 0 var(--mm-drag-y, 0px);
+  }
+
+  @media (min-width: 768px) {
+    /* En escritorio el panel está centrado y no se arrastra. */
+    .mm-draggable {
+      translate: none;
+    }
+  }
+
   /* Botones de categoría: feedback al pulsar (reemplaza whileTap) */
   .mm-tap {
     transition: transform 0.12s ease-out;

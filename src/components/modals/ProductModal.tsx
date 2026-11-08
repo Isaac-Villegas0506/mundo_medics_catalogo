@@ -126,36 +126,61 @@ function ModalContent({
     };
   }, []);
 
-  /* Fase 10: arrastre del panel desde el asa móvil, con Pointer Events.
-     Antes lo hacía `useDragControls` de framer-motion. Se cierra al bajar más
-     de 100 px o si el gesto es claramente rápido hacia abajo. */
+  /* Fase 10/11: arrastre del panel desde el asa móvil, con Pointer Events.
+     Antes lo hacía `useDragControls` de framer-motion.
+
+     Correcciones de la Fase 11:
+       - `dragY` se leía del closure en `onDragEnd`, así que podía llegar
+         desactualizado y el gesto no cerraba. Ahora el desplazamiento se guarda
+         en el ref, que siempre tiene el valor real.
+       - Al soltar sin cerrar, el panel vuelve a su sitio CON transición. */
   const [dragY, setDragY] = React.useState(0);
-  const dragState = useRef<{ startY: number; startAt: number } | null>(null);
+  /* `settling` aplica la transición de vuelta; mientras se arrastra, no hay
+     transición para que el panel siga al dedo. */
+  const [settling, setSettling] = React.useState(false);
+  const dragState = useRef<{ startY: number; startAt: number; lastDy: number } | null>(null);
 
   const onDragStart = (e: React.PointerEvent) => {
-    dragState.current = { startY: e.clientY, startAt: Date.now() };
+    dragState.current = { startY: e.clientY, startAt: Date.now(), lastDy: 0 };
+    setSettling(false);
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 
   const onDragMove = (e: React.PointerEvent) => {
     if (!dragState.current) return;
     const dy = Math.max(0, e.clientY - dragState.current.startY);
+    dragState.current.lastDy = dy;
     setDragY(dy);
   };
 
   const onDragEnd = () => {
-    if (!dragState.current) return;
-    const elapsed = Math.max(Date.now() - dragState.current.startAt, 1);
-    const velocity = dragY / elapsed; // px/ms
+    const state = dragState.current;
+    if (!state) return;
     dragState.current = null;
 
-    if (dragY > 100 || velocity > 0.4) {
+    const elapsed = Math.max(Date.now() - state.startAt, 1);
+    const distance = state.lastDy;
+    const velocity = distance / elapsed; // px/ms
+
+    if (distance > 100 || velocity > 0.4) {
+      // Se cierra: el panel sigue bajando hasta salir de pantalla (la clase de
+      // salida la aplica `closing`, que activa onClose).
+      setDragY(distance);
       onClose();
       return;
     }
-    // Vuelve a su sitio (la transición CSS la aplica la clase).
+
+    // No llegó al umbral: vuelve a su sitio deslizándose.
+    setSettling(true);
     setDragY(0);
   };
+
+  /* Seguridad: si el modal se reutiliza para otro producto, el desplazamiento
+     vuelve a cero. */
+  React.useEffect(() => {
+    setDragY(0);
+    setSettling(false);
+  }, [product.id]);
 
   // Interactive states
   const [selectedSize, setSelectedSize] = React.useState<string | null>(product.sizes?.[0] || null);
@@ -257,20 +282,32 @@ function ModalContent({
           w-full md:w-[840px]
           md:-translate-x-1/2 md:-translate-y-1/2
           shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]
-          flex flex-col overflow-hidden ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
+          flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
         style={{
-          // El arrastre sólo aplica en móvil; en escritorio el panel está centrado
-          // con translate y no debe moverse.
-          ...(dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: 'none' } : {}),
+          /* El arrastre se aplica con la variable CSS `--mm-drag-y`, no con
+             `transform` directo: así no se pisa el centrado de escritorio
+             (`md:-translate-x-1/2 md:-translate-y-1/2`) y el panel sigue
+             centrado aunque se arrastre.
+
+             Mientras se arrastra no hay transición (sigue al dedo); al soltar
+             sin cerrar, `settling` la activa para que vuelva deslizándose. */
+          ['--mm-drag-y' as string]: `${dragY}px`,
+          transition: settling ? 'transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
         }}
       >
-        {/* Drag Handle Area (Mobile only) */}
+        {/* Zona de arrastre (sólo móvil).
+            Fase 11: se amplió a todo el ancho y 56 px de alto. Antes medía
+            128×48 px, así que era fácil fallar el gesto y parecía que "no
+            funciona". La barra visible sigue siendo pequeña. */}
         <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-12 z-50 flex justify-center pt-3 md:hidden cursor-grab active:cursor-grabbing"
+          className="absolute top-0 left-0 right-0 h-14 z-50 flex justify-center pt-3 md:hidden cursor-grab active:cursor-grabbing select-none"
           onPointerDown={onDragStart}
           onPointerMove={onDragMove}
           onPointerUp={onDragEnd}
           onPointerCancel={onDragEnd}
+          role="button"
+          tabIndex={-1}
+          aria-label="Desliza hacia abajo para cerrar"
           style={{ touchAction: 'none' }}
         >
           <div className="w-10 h-1.5 bg-[#ccc]/80 shadow-sm rounded-full" />

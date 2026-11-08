@@ -1,63 +1,73 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/utils/supabase/client';
+import type { Metadata } from 'next';
+import { createPublicClient } from '@/utils/supabase/publicServer';
 import TopAppBar from '@/components/navigation/TopAppBar';
 import BottomNav from '@/components/navigation/BottomNav';
-import { ClothingIcon } from '@/components/ui/ClothingIcon';
+import CategoryCard from '@/components/ui/CategoryCard';
 
-export default function CategoriesPage() {
-  const router = useRouter();
-  const [categories, setCategories] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+export const metadata: Metadata = {
+  title: 'Colecciones | Mundo Medics',
+  description:
+    'Explora las colecciones de indumentaria médica de Mundo Medics. Consulta cada categoría y pide por WhatsApp.',
+  alternates: { canonical: '/categories' },
+};
 
-  useEffect(() => {
-    async function fetchCategories() {
-      setIsLoading(true);
-      try {
-        // Solo las columnas que usa la pantalla (Fase 4, 8.2): antes se traía
-        // `select('*')` de categorías y TODOS los productos solo para la foto.
-        const { data: catData, error } = await supabase
-          .from('categories')
-          .select('id, name, icon, featured_product_id')
-          .order('order_index', { ascending: true });
+/**
+ * Fase 12 — Optimización de Categorías.
+ *
+ * ANTES: era un Client Component. El HTML inicial llegaba vacío, el navegador
+ * tenía que descargar e hidratar React, y sólo entonces se lanzaban DOS
+ * consultas SECUENCIALES (categorías → productos por sus imágenes). El resultado
+ * era una pantalla en blanco durante todo ese tiempo.
+ *
+ * AHORA: es un Server Component. Las dos consultas se hacen en paralelo en el
+ * servidor y el HTML llega con las colecciones ya pintadas. El navegador no
+ * necesita JavaScript para verlas, y con `revalidate` se sirven cacheadas.
+ */
+export const revalidate = 60;
 
-        if (error) throw error;
-        if (!catData) return;
+interface CategoryCard {
+  id: string;
+  name: string;
+  icon: string | null;
+  featured_product_id: string | null;
+  image_url: string | null;
+}
 
-        // Se piden únicamente las imágenes de las categorías que tienen portada.
-        const featuredIds = catData
-          .map((c) => c.featured_product_id)
-          .filter((id): id is string => Boolean(id));
+async function getCategories(): Promise<CategoryCard[]> {
+  const supabase = createPublicClient();
 
-        let imageById = new Map<string, string | null>();
-        if (featuredIds.length > 0) {
-          const { data: prodData } = await supabase
-            .from('products')
-            .select('id, image_url')
-            .in('id', featuredIds);
-          imageById = new Map((prodData || []).map((p) => [p.id, p.image_url]));
-        }
+  // Sólo las columnas que usa la pantalla.
+  const { data: categories, error } = await supabase
+    .from('categories')
+    .select('id, name, icon, featured_product_id')
+    .order('order_index', { ascending: true });
 
-        setCategories(
-          catData.map((c) => ({
-            ...c,
-            image_url: c.featured_product_id ? (imageById.get(c.featured_product_id) ?? null) : null,
-          }))
-        );
-        setLoadError(false);
-      } catch (e) {
-        console.error('Error cargando categorías:', e);
-        setLoadError(true);
-      }
-      setIsLoading(false);
-    }
-    fetchCategories();
-  }, [reloadKey]);
+  if (error || !categories) return [];
+
+  const featuredIds = categories
+    .map((c) => c.featured_product_id)
+    .filter((id): id is string => Boolean(id));
+
+  if (featuredIds.length === 0) {
+    return categories.map((c) => ({ ...c, image_url: null }));
+  }
+
+  // Una sola consulta extra, no una por categoría.
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, image_url')
+    .in('id', featuredIds);
+
+  const imageById = new Map((products || []).map((p) => [p.id, p.image_url]));
+
+  return categories.map((c) => ({
+    ...c,
+    image_url: c.featured_product_id ? (imageById.get(c.featured_product_id) ?? null) : null,
+  }));
+}
+
+export default async function CategoriesPage() {
+  const categories = await getCategories();
 
   return (
     <div className="bg-[#f8f8f6] text-[#1a1a1a] pb-nav min-h-screen font-sans antialiased">
@@ -67,61 +77,13 @@ export default function CategoriesPage() {
         <h1 className="text-[26px] font-semibold tracking-tight mb-6 text-[#1a1a1a]">Colecciones</h1>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {isLoading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-[#e8e8e4] dark:bg-zinc-800 rounded-[24px] skeleton-shimmer" />
-            ))
-          ) : loadError ? (
-            <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-[#888]">
-              <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">
-                wifi_off
-              </span>
-              <p className="text-sm mb-4">No pudimos cargar las colecciones.</p>
-              <button
-                onClick={() => setReloadKey((k) => k + 1)}
-                className="px-5 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold"
-              >
-                Reintentar
-              </button>
-            </div>
-          ) : categories.length === 0 ? (
+          {categories.length === 0 ? (
             <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-[#888]">
               No hay categorías disponibles.
             </div>
           ) : (
             categories.map((cat, i) => (
-              <button
-                key={cat.id}
-                onClick={() => router.push(`/?category=${encodeURIComponent(cat.name)}`)}
-                className="relative w-full aspect-[3/4] md:aspect-[4/5] rounded-[24px] overflow-hidden group border border-black/5 shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
-              >
-                {cat.image_url ? (
-                  /* Fase 6 (10.3): next/image con `sizes` para que el CDN
-                     entregue el tamaño correcto en vez de la imagen original. */
-                  <Image
-                    src={cat.image_url}
-                    alt={cat.name}
-                    fill
-                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                    className="object-cover transition-transform duration-700 group-hover:scale-105 bg-white"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-[#e8e8e4] flex items-center justify-center transition-transform duration-700 group-hover:scale-105">
-                    <ClothingIcon name={cat.name} className="w-[50px] h-[50px] text-[#bbb]" />
-                  </div>
-                )}
-
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-
-                {/* Category Name */}
-                <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col items-start text-left z-10">
-                  <span className="font-semibold text-[18px] tracking-tight text-white drop-shadow-sm">{cat.name}</span>
-                  <span className="text-[11px] font-medium text-white/80 mt-1 flex items-center gap-1 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                    Explorar <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                  </span>
-                </div>
-              </button>
+              <CategoryCard key={cat.id} category={cat} index={i} />
             ))
           )}
         </div>
