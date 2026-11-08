@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
+import AdminDialog from '@/components/admin/AdminDialog';
 
 export default function AdminFeaturedPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -11,8 +12,13 @@ export default function AdminFeaturedPage() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  /* Fase 17: un único modal de resultado, cerrable por el usuario.
+     Antes eran dos banners que desaparecían solos con setTimeout. */
+  const [dialog, setDialog] = useState<{
+    variant: 'success' | 'error' | 'warning';
+    title: string;
+    body: string;
+  } | null>(null);
   const MAX_FEATURED = 10;
 
   const fetchData = async () => {
@@ -41,9 +47,12 @@ export default function AdminFeaturedPage() {
       setFeaturedProducts(featuredProducts.filter(p => p.id !== product.id));
     } else {
       if (featuredProducts.length >= MAX_FEATURED) {
-        // Fase 7 (1.10): aviso en la interfaz, sin alert() bloqueante.
-        setSaveError(`Has alcanzado el límite de ${MAX_FEATURED} productos destacados.`);
-        setTimeout(() => setSaveError(null), 4000);
+        // Fase 17: aviso en modal cerrable.
+        setDialog({
+          variant: 'warning',
+          title: 'Límite alcanzado',
+          body: `Puedes destacar hasta ${MAX_FEATURED} productos. Quita uno antes de añadir otro.`,
+        });
         return;
       }
       setFeaturedProducts([...featuredProducts, { ...product, is_featured: true }]);
@@ -53,7 +62,7 @@ export default function AdminFeaturedPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    setSaveError(null);
+
 
     // First, set all products to not featured
     const { error: clearError } = await supabase
@@ -63,7 +72,7 @@ export default function AdminFeaturedPage() {
 
     if (clearError) {
       console.error('Error al limpiar destacados:', clearError);
-      setSaveError('No se pudieron guardar los destacados.');
+      setDialog({ variant: 'error', title: 'No se pudo guardar', body: 'Revisa tu conexión e inténtalo de nuevo.' });
       setSaving(false);
       return;
     }
@@ -78,7 +87,7 @@ export default function AdminFeaturedPage() {
     const failed = results.find((r) => r.error);
     if (failed?.error) {
       console.error('Error al guardar destacados:', failed.error);
-      setSaveError('Algunos destacados no se guardaron. Revisa la lista.');
+      setDialog({ variant: 'error', title: 'Guardado incompleto', body: 'Algunos destacados no se guardaron. Vuelve a intentarlo.' });
       setSaving(false);
       return;
     }
@@ -87,8 +96,12 @@ export default function AdminFeaturedPage() {
     await revalidateCatalog();
 
     setSaving(false);
-    setSaveMessage('Destacados guardados correctamente.');
-    setTimeout(() => setSaveMessage(null), 3000);
+    // Fase 17: modal de éxito cerrable.
+    setDialog({
+      variant: 'success',
+      title: 'Destacados guardados',
+      body: 'El orden y la selección ya se ven en la portada.',
+    });
   };
 
   return (
@@ -115,20 +128,6 @@ export default function AdminFeaturedPage() {
           </button>
         </div>
       </div>
-
-      {/* Fase 7 (1.10): mensajes de resultado visibles, sin usar alert(). */}
-      {saveError && (
-        <p role="alert" className="flex items-start gap-2 rounded-2xl bg-[#fdf3f3] px-4 py-3 text-sm text-[#a33]">
-          <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
-          <span>{saveError}</span>
-        </p>
-      )}
-      {saveMessage && (
-        <p role="status" className="flex items-start gap-2 rounded-2xl bg-[#eef7ee] px-4 py-3 text-sm text-[#2e7d32]">
-          <span className="material-symbols-outlined text-[18px] shrink-0">check</span>
-          <span>{saveMessage}</span>
-        </p>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         
@@ -290,6 +289,18 @@ export default function AdminFeaturedPage() {
           )}
         </div>
       </div>
+
+      {/* Fase 17: modal de resultado, cerrable con ✕, Escape o el botón. */}
+      <AdminDialog
+        open={!!dialog}
+        variant={dialog?.variant === 'warning' ? 'warning' : (dialog?.variant ?? 'success')}
+        title={dialog?.title ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setDialog(null)}
+        onCancel={() => setDialog(null)}
+      >
+        {dialog?.body}
+      </AdminDialog>
     </main>
   );
 }

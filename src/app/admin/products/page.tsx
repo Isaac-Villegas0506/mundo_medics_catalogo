@@ -5,6 +5,7 @@ import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { revalidateCatalog } from '@/app/admin/actions';
+import AdminDialog from '@/components/admin/AdminDialog';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -12,6 +13,12 @@ export default function AdminProductsPage() {
   /* Fase 11: si falla la consulta se avisa, en vez de mostrar una lista vacía
      como si no hubiera productos. */
   const [loadError, setLoadError] = useState(false);
+  /* Fase 17: modal de resultado para las acciones (borrar, cambiar estado). */
+  const [dialog, setDialog] = useState<{
+    variant: 'success' | 'error';
+    title: string;
+    body: string;
+  } | null>(null);
   
   // Modal states
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -83,7 +90,7 @@ export default function AdminProductsPage() {
     if (error) {
       console.error('Error al cambiar el estado:', error);
       setProducts(previous); // Revertir: no mostrar un estado que no se guardó.
-      setLoadError(true);
+      setDialog({ variant: 'error', title: 'No se pudo cambiar el estado', body: 'Revisa tu conexión e inténtalo de nuevo.' });
       return;
     }
 
@@ -100,6 +107,7 @@ export default function AdminProductsPage() {
   const executeDelete = async () => {
     if (!productToDelete) return;
 
+    const nombre = productToDelete.name;
     const previous = products;
     setProducts(products.filter(p => p.id !== productToDelete.id));
     setDeleteModalOpen(false);
@@ -112,11 +120,18 @@ export default function AdminProductsPage() {
     if (error) {
       console.error('Error al eliminar el producto:', error);
       setProducts(previous);
-      setLoadError(true);
+      setDialog({ variant: 'error', title: 'No se pudo eliminar', body: 'El producto sigue en el catálogo. Revisa tu conexión e inténtalo de nuevo.' });
       return;
     }
 
     await revalidateCatalog();
+
+    // Fase 17: confirmación en modal cerrable.
+    setDialog({
+      variant: 'success',
+      title: 'Producto eliminado',
+      body: `«${nombre}» ya no aparece en el catálogo.`,
+    });
   };
 
   const statusColors: any = {
@@ -307,36 +322,36 @@ export default function AdminProductsPage() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && (
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          >
-            <div
-              className="bg-white rounded-[28px] p-6 md:p-8 shadow-2xl w-[90%] max-w-[400px] border border-white/20 mx-auto flex flex-col items-center text-center"
-            >
-              <h3 className="text-xl font-semibold text-[#1a1a1a] mb-2 tracking-tight">Confirmar Eliminación</h3>
-              <p className="text-sm text-[#888] leading-relaxed mb-6">
-                ¿Estás seguro de que deseas eliminar <strong>{productToDelete?.name}</strong>? Esta acción no se puede deshacer y el producto desaparecerá del catálogo para siempre.
-              </p>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setDeleteModalOpen(false)}
-                  className="flex-1 bg-[#f4f2f0] text-[#555] font-semibold text-sm px-4 py-3.5 rounded-xl hover:bg-[#eceae6] transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={executeDelete}
-                  disabled={deleteCountdown > 0}
-                  className="flex-1 bg-[#e57373] text-white font-semibold text-sm px-4 py-3.5 rounded-xl hover:bg-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {deleteCountdown > 0 ? `Espera (${deleteCountdown})` : 'Eliminar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Fase 17: confirmación de borrado en modal unificado. */}
+      <AdminDialog
+        open={deleteModalOpen && !!productToDelete}
+        variant="confirm"
+        title="Confirmar eliminación"
+        confirmLabel={deleteCountdown > 0 ? `Espera (${deleteCountdown})` : 'Eliminar'}
+        confirmDisabled={deleteCountdown > 0}
+        cancelLabel="Cancelar"
+        onConfirm={executeDelete}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setProductToDelete(null);
+        }}
+      >
+        ¿Seguro que quieres eliminar <strong>{productToDelete?.name}</strong>? Esta acción no
+        se puede deshacer.
+      </AdminDialog>
+
+      {/* Fase 17: modal de resultado de las acciones. */}
+      <AdminDialog
+        open={!!dialog}
+        variant={dialog?.variant ?? 'success'}
+        title={dialog?.title ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setDialog(null)}
+        onCancel={() => setDialog(null)}
+      >
+        {dialog?.body}
+      </AdminDialog>
+
     </main>
   );
 }

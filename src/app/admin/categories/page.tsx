@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
+import AdminDialog from '@/components/admin/AdminDialog';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -11,6 +12,12 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /* Fase 17: modal de resultado, cerrable por el usuario. */
+  const [resultDialog, setResultDialog] = useState<{
+    variant: 'success' | 'error';
+    title: string;
+    body: string;
+  } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -79,7 +86,7 @@ export default function AdminCategoriesPage() {
       const { error } = await supabase.from('categories').update(payload).eq('id', editingId);
       if (error) {
         console.error('Error al actualizar categoría:', error);
-        setFormError('No se pudo actualizar la categoría.');
+        setResultDialog({ variant: 'error', title: 'No se pudo actualizar', body: 'Revisa tu conexión e inténtalo de nuevo.' });
         setSaving(false);
         return;
       }
@@ -90,7 +97,7 @@ export default function AdminCategoriesPage() {
       const { data, error } = await supabase.from('categories').insert([payload]).select();
       if (error || !data?.[0]) {
         console.error('Error al crear categoría:', error);
-        setFormError('No se pudo crear la categoría.');
+        setResultDialog({ variant: 'error', title: 'No se pudo crear', body: 'Revisa tu conexión e inténtalo de nuevo.' });
         setSaving(false);
         return;
       }
@@ -99,6 +106,13 @@ export default function AdminCategoriesPage() {
 
     // Fase 7 (1.5): reflejar el cambio en el catálogo público al instante.
     await revalidateCatalog();
+
+    /* Fase 17: se informa con un modal cerrable en lugar de un mensaje efímero. */
+    setResultDialog({
+      variant: 'success',
+      title: editingId ? 'Categoría actualizada' : 'Categoría creada',
+      body: 'Los cambios ya se ven en el catálogo público.',
+    });
 
     setFormData({ name: '', featured_product_id: '' });
     setProductSearch('');
@@ -136,11 +150,21 @@ export default function AdminCategoriesPage() {
       console.error('Error al eliminar categoría:', error);
       // Revertir: no se puede mostrar éxito si la operación falló.
       setCategories(previous);
-      setFormError('No se pudo eliminar la categoría. Puede tener productos asociados.');
+      setResultDialog({
+        variant: 'error',
+        title: 'No se pudo eliminar',
+        body: 'Puede que la categoría tenga productos asociados o que no tengas permisos.',
+      });
       return;
     }
 
     await revalidateCatalog();
+
+    setResultDialog({
+      variant: 'success',
+      title: 'Categoría eliminada',
+      body: 'Los productos de esa categoría siguen existiendo, pero ya no la tienen asignada.',
+    });
   };
 
   // Determine which product is currently selected in the form
@@ -363,39 +387,35 @@ export default function AdminCategoriesPage() {
 
       </div>
 
-      {/* Fase 7: modal de confirmación propio (antes era `confirm()`). */}
-      {deleteModalOpen && categoryToDelete && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={() => setDeleteModalOpen(false)}
-          >
-            <div
-              className="w-full max-w-[380px] rounded-3xl bg-white p-6 text-center shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span className="material-symbols-outlined mb-3 block text-[36px] text-[#e57373]">delete</span>
-              <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">¿Eliminar categoría?</h3>
-              <p className="mb-6 text-sm text-[#777]">
-                Se eliminará <strong>{categoryToDelete.name}</strong>. Los productos no se borran, pero
-                quedarán sin esa categoría.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
-                  className="flex-1 rounded-2xl bg-[#f2f2f0] py-3 text-sm font-semibold text-[#1a1a1a] hover:bg-[#e8e8e4]"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={executeDeleteCategory}
-                  className="flex-1 rounded-2xl bg-[#c62828] py-3 text-sm font-semibold text-white hover:bg-[#a01f1f]"
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Fase 17: modal de confirmación unificado (cerrable con ✕ y Escape). */}
+      <AdminDialog
+        open={deleteModalOpen && !!categoryToDelete}
+        variant="confirm"
+        title="¿Eliminar categoría?"
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={executeDeleteCategory}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setCategoryToDelete(null);
+        }}
+      >
+        Se eliminará <strong>{categoryToDelete?.name}</strong>. Los productos no se
+        borran, pero quedarán sin esa categoría.
+      </AdminDialog>
+
+      {/* Fase 17: modal de resultado de las operaciones. */}
+      <AdminDialog
+        open={!!resultDialog}
+        variant={resultDialog?.variant ?? 'success'}
+        title={resultDialog?.title ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setResultDialog(null)}
+        onCancel={() => setResultDialog(null)}
+      >
+        {resultDialog?.body}
+      </AdminDialog>
+
     </main>
   );
 }

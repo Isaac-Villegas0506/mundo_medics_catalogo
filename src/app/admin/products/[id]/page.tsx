@@ -8,15 +8,20 @@ import Link from 'next/link';
 import { validateImageFile } from '@/utils/imageUpload';
 import { uploadToImageKit } from '@/utils/imageUploadClient';
 import { revalidateCatalog } from '@/app/admin/actions';
+import AdminDialog from '@/components/admin/AdminDialog';
 
 export default function ProductEditorPage() {
   const router = useRouter();
   const params = useParams();
-  const isNew = params.id === 'new';
-  
-  const [loading, setLoading] = useState(!isNew);
+  /* Fase 17: pasa a estado para poder cambiar a modo edición tras crear un
+     producto, sin salir de la pestaña. */
+  const [isNew, setIsNew] = useState(params.id === 'new');
+
+  const [loading, setLoading] = useState(params.id !== 'new');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /* Fase 17: modal de éxito en lugar de navegar fuera de la pestaña. */
+  const [successDialog, setSuccessDialog] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<{ id: string, file: File, progress: number, url: string }[]>([]);
 
@@ -214,9 +219,9 @@ export default function ProductEditorPage() {
     /* Fase 16: antes NO se comprobaba el error. Si la escritura fallaba (RLS,
        red, dato inválido) la app navegaba igual a la lista, como si se hubiera
        guardado, y el producto no existía. Ahora se verifica y se avisa. */
-    const { error } = isNew
-      ? await supabase.from('products').insert([payload])
-      : await supabase.from('products').update(payload).eq('id', params.id);
+    const { data: inserted, error } = isNew
+      ? await supabase.from('products').insert([payload]).select('id').single()
+      : await supabase.from('products').update(payload).eq('id', params.id).select('id').single();
 
     if (error) {
       console.error('Error al guardar el producto:', error);
@@ -233,7 +238,16 @@ export default function ProductEditorPage() {
     await revalidateCatalog();
 
     setSaving(false);
-    router.push('/admin/products');
+
+    // Fase 17: el modal informa del resultado sin salir de la pestaña.
+    setSuccessDialog(true);
+
+    // Si era un producto nuevo, la URL pasa a la de edición para que recargar
+    // no cree otro producto duplicado.
+    if (isNew && inserted?.id) {
+      setIsNew(false);
+      router.replace(`/admin/products/${inserted.id}`, { scroll: false });
+    }
   };
 
   if (loading) return <div className="p-10 text-center">Cargando producto...</div>;
@@ -685,6 +699,25 @@ export default function ProductEditorPage() {
         </div>
 
       </div>
+
+      {/* Fase 17: modal de éxito. Se cierra con ✕, Escape o «Ir a la lista».
+          El usuario NO sale de la pestaña hasta que decide. */}
+      <AdminDialog
+        open={successDialog}
+        variant="success"
+        title={isNew ? 'Producto creado' : 'Cambios guardados'}
+        confirmLabel="Seguir aquí"
+        cancelLabel="Ir a la lista"
+        onConfirm={() => setSuccessDialog(false)}
+        onCancel={() => {
+          setSuccessDialog(false);
+          router.push('/admin/products');
+        }}
+      >
+        {isNew
+          ? 'El producto ya está disponible en el catálogo.'
+          : 'Los datos del producto se actualizaron y el catálogo ya los muestra.'}
+      </AdminDialog>
     </main>
   );
 }

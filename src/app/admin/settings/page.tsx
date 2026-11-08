@@ -7,6 +7,7 @@ import { sanitizeMapEmbedUrl } from '@/utils/mapUrl';
 import { uploadToImageKit } from '@/utils/imageUploadClient';
 import { invalidateSettingsCache } from '@/utils/settingsCache';
 import { revalidateCatalog } from '@/app/admin/actions';
+import AdminDialog from '@/components/admin/AdminDialog';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -25,6 +26,12 @@ export default function AdminSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  /* Fase 17: modal de resultado (éxito o error), cerrable por el usuario. */
+  const [dialog, setDialog] = useState<{
+    variant: 'success' | 'error';
+    title: string;
+    body: string;
+  } | null>(null);
 
   const fetchSettings = async (showSpinner = true) => {
     /* Fase 11: `isLoading` arranca en true, así que el primer render no necesita
@@ -68,13 +75,12 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage('');
-    
+
     try {
       const updates = Object.entries(settings).map(([key, value]) => ({ key, value }));
       const { error } = await supabase.from('settings').upsert(updates, { onConflict: 'key' });
-        
+
       if (error) throw error;
-      setSaveMessage('Configuración guardada exitosamente.');
 
       // Invalidar la caché de ajustes para que la tienda pública vea el cambio.
       invalidateSettingsCache();
@@ -85,10 +91,15 @@ export default function AdminSettingsPage() {
 
       // Dispatch an event so the client app can update dynamically
       window.dispatchEvent(new Event('settingsUpdated'));
-      
-      setTimeout(() => setSaveMessage(''), 3000);
+
+      /* Fase 17: modal de éxito en vez de un texto que desaparecía solo. */
+      setDialog({ variant: 'success', title: 'Configuración guardada', body: 'Los cambios ya están visibles en la tienda pública.' });
     } catch (e) {
-      setSaveMessage('Error al guardar. Asegúrate de haber creado la tabla settings.');
+      setDialog({
+        variant: 'error',
+        title: 'No se pudo guardar',
+        body: 'Revisa tu conexión e inténtalo de nuevo. Si el problema continúa, la tabla de ajustes podría no existir.',
+      });
     }
     
     setIsSaving(false);
@@ -145,8 +156,10 @@ export default function AdminSettingsPage() {
         </div>
       </div>
       
+      {/* Fase 17: los avisos de validación siguen inline (son de campo);
+          el resultado de guardar se muestra en un modal cerrable. */}
       {saveMessage && (
-        <div className="bg-[#e8f1ff] border border-[#1f4ed8]/20 text-[#1f4ed8] p-3 rounded-xl text-sm font-medium">
+        <div className="bg-[#fff8e1] border border-[#f57f17]/30 text-[#8a5a00] p-3 rounded-xl text-sm font-medium">
           {saveMessage}
         </div>
       )}
@@ -300,6 +313,18 @@ export default function AdminSettingsPage() {
 
         </div>
       )}
+
+      {/* Fase 17: modal de resultado, cerrable con ✕, Escape o el botón. */}
+      <AdminDialog
+        open={!!dialog}
+        variant={dialog?.variant ?? 'success'}
+        title={dialog?.title ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setDialog(null)}
+        onCancel={() => setDialog(null)}
+      >
+        {dialog?.body}
+      </AdminDialog>
     </main>
   );
 }
