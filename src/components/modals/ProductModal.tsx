@@ -544,10 +544,16 @@ function ModalContent({
           <div
             className="relative z-10 flex w-full flex-col bg-white dark:bg-zinc-900
               rounded-t-[24px] md:rounded-none md:w-[55%]
-              px-5 pb-4 pt-5 md:px-6 md:pt-8 md:pb-0
+              px-5 pt-5 md:px-6 md:pt-8 pb-0
               md:min-h-0 md:flex-1 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
           >
-            <div className="pb-6 md:pb-8">
+            {/* Fase 25: se quitó el `pb-6` de este bloque.
+                Antes había DOS espacios sumados: `pb-4` del panel (16px) más
+                `pb-6` de este div (24px) = 40px de hueco vacío antes del pie,
+                que se veía como un salto raro al final del contenido.
+                Ahora el único relleno inferior lo pone el propio pie
+                (`pb-modal-footer`), que además respeta la zona segura. */}
+            <div>
               <h2 className="text-[22px] md:text-3xl font-semibold text-[#1a1a1a] dark:text-zinc-100 tracking-tight mb-2 md:mb-3 md:pr-10 leading-snug">
                 {product.name}
               </h2>
@@ -701,9 +707,11 @@ function ModalContent({
                 </div>
               )}
 
-              {/* Related Products */}
+              {/* Related Products
+                  Fase 25: `pt-8 mt-6` sumaban 56 px de aire antes del bloque;
+                  ahora es un solo espaciado de 20 px. */}
               {relatedProductsData.length > 0 && (
-                <div className="pt-8 mt-6 border-t border-[#f0f0ee] dark:border-zinc-800">
+                <div className="mt-5 border-t border-[#f0f0ee] pt-5 dark:border-zinc-800">
                   <h3 className="text-[16px] font-semibold text-[#1a1a1a] dark:text-zinc-100 mb-4">
                     También podría interesarte
                   </h3>
@@ -738,7 +746,7 @@ function ModalContent({
             el nombre del producto fuera de pantalla.
             Ahora va como botón-icono cuadrado junto a WhatsApp: la misma
             función en una sola fila, sin robar altura a la ficha. */}
-        <div className="shrink-0 w-full md:w-[55%] md:ml-auto px-4 md:px-6 pt-3 pb-modal-footer border-t border-[#f0f0ee] dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2 md:gap-3 z-20">
+        <div className="z-20 flex w-full shrink-0 items-center gap-2 border-t border-[#f0f0ee] bg-white px-4 pb-modal-footer pt-3 md:ml-auto md:w-[55%] md:gap-3 md:px-6 dark:border-zinc-800 dark:bg-zinc-900">
           <Link
             href={`/product?id=${product.id}`}
             className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 text-center leading-tight bg-[#f2f2f0] dark:bg-zinc-800 text-[#1a1a1a] dark:text-zinc-100 rounded-2xl text-[13px] md:text-sm font-semibold hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
