@@ -48,3 +48,6 @@ next-env.d.ts
 # Artefactos de medicion (Lighthouse)
 lh-*.json
 measure.cjs
+
+# Mensajes de commit temporales
+commit-msg.txt
