@@ -551,12 +551,23 @@ function ModalContent({
             </div>
           </div>
 
-          {/* Right: Content */}
+          {/* Right: Content
+              Fase 28 — CAUSA EXACTA DEL HUECO.
+
+              El wrapper lleva `flex-1` y el modal es gris (`bg-[#eeecea]`).
+              Este panel, en móvil, NO tenía `flex-1` (solo `md:flex-1`), así
+              que se quedaba en su altura natural (~200 px). El sobrante del
+              wrapper quedaba a la vista con el GRIS del modal: ese era el
+              hueco grande entre las tallas y los botones.
+
+              Con `flex-1` también en móvil, el panel absorbe ese sobrante y lo
+              rellena de blanco, así el pie queda justo bajo el contenido.
+              `min-h-0` permite que se encoja correctamente dentro del flex. */}
           <div
-            className="relative z-10 flex w-full flex-col bg-white dark:bg-zinc-900
+            className="relative z-10 flex w-full flex-1 flex-col bg-white dark:bg-zinc-900
               rounded-t-[24px] md:rounded-none md:w-[55%]
               px-5 pt-5 md:px-6 md:pt-8 pb-0
-              md:min-h-0 md:flex-1 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
+              min-h-0 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
           >
             {/* Fase 25: se quitó el `pb-6` de este bloque.
                 Antes había DOS espacios sumados: `pb-4` del panel (16px) más
@@ -564,7 +575,12 @@ function ModalContent({
                 que se veía como un salto raro al final del contenido.
                 Ahora el único relleno inferior lo pone el propio pie
                 (`pb-modal-footer`), que además respeta la zona segura. */}
-            <div>
+            {/* Fase 28: `flex-1` para que el contenido ocupe el alto del panel.
+                Sin esto el panel rellenaba de blanco, pero este bloque se
+                quedaba arriba y el sobrante aparecía entre el último dato y el
+                pie. Al ser el panel flex-col, esto pega el contenido arriba y
+                deja el pie justo debajo. */}
+            <div className="flex-1">
               <h2 className="text-[22px] md:text-3xl font-semibold text-[#1a1a1a] dark:text-zinc-100 tracking-tight mb-2 md:mb-3 md:pr-10 leading-snug">
                 {product.name}
               </h2>
