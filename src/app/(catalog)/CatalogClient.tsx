@@ -305,7 +305,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
               ))}
             </div>
           ) : loadError ? (
-            <div className="mm-in col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full">
+            <div className="mm-in col-span-full text-center py-20 text-[#6b6b6b] dark:text-zinc-400 w-full">
               <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">wifi_off</span>
               <p className="text-sm mb-4">No pudimos cargar los productos.</p>
               <button
@@ -316,7 +316,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
               </button>
             </div>
           ) : products.length === 0 ? (
-            <div className="mm-in col-span-full text-center py-20 text-[#999] dark:text-zinc-500 w-full">
+            <div className="mm-in col-span-full text-center py-20 text-[#6b6b6b] dark:text-zinc-400 w-full">
               <span className="material-symbols-outlined text-[40px] mb-3 block text-[#ddd] dark:text-zinc-700">search_off</span>
               <p className="text-sm">No se encontraron productos.</p>
             </div>

@@ -24,24 +24,24 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
         {product.image_url ? (
           <Image
             alt={product.name}
-            /* Fase 6 (LCP): la primera tarjeta NO lleva `img-reveal`.
-               Esa clase arranca en opacity:0 y anima 400 ms, y el navegador
-               no cuenta el LCP hasta que el elemento es visible. Era el motivo
-               principal del "element render delay" de 1.6 s en Lighthouse. */
-            className={index === 0 ? 'object-contain' : 'object-contain img-reveal'}
+            /* Fase 21 (LCP): la animación de entrada quita el LCP.
+               `img-reveal` arranca en opacity:0 y anima 400 ms; el navegador no
+               cuenta un elemento como LCP hasta que es visible. PageSpeed
+               señaló como LCP «Chaqueta San Martín», que estaba en la 4.ª
+               posición y por tanto SÍ llevaba la animación + lazy.
+               Ahora las tarjetas que caben en la primera pantalla (4 en móvil =
+               2 filas de 2) van sin animación y sin lazy. */
+            className={index < 4 ? 'object-contain' : 'object-contain img-reveal'}
             src={product.image_url}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             /* Next.js 16 deprecó `priority` en favor de `preload` +
-               `fetchPriority` (ver docs de next/image). Con `priority` el
-               <link rel=preload> salía SIN fetchpriority, así que el LCP
-               competía con el resto de peticiones. */
+               `fetchPriority` (ver docs de next/image). */
             preload={index === 0}
             fetchPriority={index === 0 ? 'high' : 'auto'}
-            /* Fase 13: la primera FILA entera (no sólo la primera tarjeta) se
-               carga de inmediato. En la grilla de 2 columnas en móvil el LCP
-               suele ser la 2.ª tarjeta, y con `lazy` llegaba tarde. */
-            loading={index < 2 ? 'eager' : 'lazy'}
+            /* Fase 21: eager hasta la 4.ª tarjeta (primera pantalla en móvil).
+               Antes sólo las 2 primeras, y el LCP real cayó en la 4.ª. */
+            loading={index < 4 ? 'eager' : 'lazy'}
           />
         ) : (
           <div className="absolute inset-0 bg-[#eeecea] dark:bg-zinc-700 flex items-center justify-center">
@@ -95,11 +95,11 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
               <span className="text-[9px] text-[#777] dark:text-zinc-400 font-medium ml-0.5">+{product.color_hex_codes.length - 4}</span>
             )}
             {product.color_name && (
-              <span className="text-[10px] text-[#777] dark:text-zinc-400 font-normal ml-1 truncate">{product.color_name}</span>
+              <span className="text-[10px] text-[#6b6b6b] dark:text-zinc-400 font-normal ml-1 truncate">{product.color_name}</span>
             )}
           </div>
         ) : product.color_name ? (
-          <p className="text-[10px] text-[#777] dark:text-zinc-400 mt-1 font-normal truncate">{product.color_name}</p>
+          <p className="text-[10px] text-[#6b6b6b] dark:text-zinc-400 mt-1 font-normal truncate">{product.color_name}</p>
         ) : null}
 
         {/* Sizes */}
