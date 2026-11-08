@@ -74,8 +74,19 @@ export default function AdminProductsPage() {
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'Disponible' ? 'Oculto' : 'Disponible';
+    // Optimista: se pinta el cambio y se revierte si la escritura falla.
+    const previous = products;
     setProducts(products.map(p => p.id === id ? { ...p, status: newStatus } : p));
-    await supabase.from('products').update({ status: newStatus }).eq('id', id);
+
+    const { error } = await supabase.from('products').update({ status: newStatus }).eq('id', id);
+
+    if (error) {
+      console.error('Error al cambiar el estado:', error);
+      setProducts(previous); // Revertir: no mostrar un estado que no se guardó.
+      setLoadError(true);
+      return;
+    }
+
     // Fase 7 (11.7): el catálogo público debe reflejar el cambio ya mismo.
     await revalidateCatalog();
   };
@@ -88,10 +99,23 @@ export default function AdminProductsPage() {
 
   const executeDelete = async () => {
     if (!productToDelete) return;
+
+    const previous = products;
     setProducts(products.filter(p => p.id !== productToDelete.id));
-    await supabase.from('products').delete().eq('id', productToDelete.id);
     setDeleteModalOpen(false);
     setProductToDelete(null);
+
+    /* Fase 16: antes no se comprobaba el error; si fallaba, el producto
+       desaparecía de la lista pero seguía existiendo en la base. */
+    const { error } = await supabase.from('products').delete().eq('id', productToDelete.id);
+
+    if (error) {
+      console.error('Error al eliminar el producto:', error);
+      setProducts(previous);
+      setLoadError(true);
+      return;
+    }
+
     await revalidateCatalog();
   };
 

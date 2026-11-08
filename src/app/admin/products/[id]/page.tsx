@@ -7,6 +7,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { validateImageFile } from '@/utils/imageUpload';
 import { uploadToImageKit } from '@/utils/imageUploadClient';
+import { revalidateCatalog } from '@/app/admin/actions';
 
 export default function ProductEditorPage() {
   const router = useRouter();
@@ -189,16 +190,48 @@ export default function ProductEditorPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setFormError(null);
+
+    /* Fase 16: validación básica antes de escribir. `products.name` y
+       `color_name` son NOT NULL en la base: sin esto, el insert fallaba con un
+       error de Postgres difícil de entender o guardaba un registro vacío. */
+    if (!formData.name || !formData.name.trim()) {
+      setFormError('El nombre del producto es obligatorio.');
+      setSaving(false);
+      return;
+    }
+    if (!formData.color_name || !formData.color_name.trim()) {
+      setFormError('El nombre del color es obligatorio.');
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       ...formData,
       image_url: formData.gallery.length > 0 ? formData.gallery[0] : null,
     };
 
-    if (isNew) {
-      await supabase.from('products').insert([payload]);
-    } else {
-      await supabase.from('products').update(payload).eq('id', params.id);
+    /* Fase 16: antes NO se comprobaba el error. Si la escritura fallaba (RLS,
+       red, dato inválido) la app navegaba igual a la lista, como si se hubiera
+       guardado, y el producto no existía. Ahora se verifica y se avisa. */
+    const { error } = isNew
+      ? await supabase.from('products').insert([payload])
+      : await supabase.from('products').update(payload).eq('id', params.id);
+
+    if (error) {
+      console.error('Error al guardar el producto:', error);
+      setFormError(
+        error.code === '42501'
+          ? 'No tienes permiso para guardar. Tu cuenta no está como administrador.'
+          : `No se pudo guardar: ${error.message}`
+      );
+      setSaving(false);
+      return; // No se navega: el usuario sigue en el formulario con sus datos.
     }
+
+    // El catálogo público debe reflejar el cambio ya mismo.
+    await revalidateCatalog();
+
     setSaving(false);
     router.push('/admin/products');
   };
