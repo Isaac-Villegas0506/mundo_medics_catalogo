@@ -380,9 +380,18 @@ function ModalContent({
           Fase 27: el panel vuelve a ALTURA FIJA en móvil (`h-[92dvh]`).
           Con `max-h` el modal cambiaba de tamaño según el producto: uno con
           pocos datos salía pequeño y otro con muchos llenaba la pantalla.
-          El cliente pidió tamaño estable y que se deslice para ver el resto. */}
+          El cliente pidió tamaño estable y que se deslice para ver el resto.
+
+          Fase 30 — CAUSA DE LA FRANJA "EN COLOR DEL FONDO".
+          El modal tenía `bg-[#eeecea]` (el gris claro). Como el panel de
+          contenido es blanco y el modal es más alto que el contenido, cualquier
+          píxel sobrante se pintaba de ese gris: se veía como una franja en
+          "color de fondo" que nunca terminaba de rellenarse.
+          El gris era REDUNDANTE: la zona de la imagen ya pinta su propio
+          `bg-[#eeecea]` internamente. Ahora el panel del modal es BLANCO, así
+          que el sobrante pasa desapercibido y no hay franja visible. */}
       <div
-        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] h-[92dvh] md:h-[82dvh] max-h-[100dvh] md:max-h-[calc(100dvh-96px)] w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
+        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-white dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] h-[92dvh] md:h-[82dvh] max-h-[100dvh] md:max-h-[calc(100dvh-96px)] w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
         style={{
           /* El arrastre se aplica con la variable CSS `--mm-drag-y`, no con
              `transform` directo: así no se pisa el centrado de escritorio
@@ -571,7 +580,7 @@ function ModalContent({
             className="relative z-10 flex w-full shrink-0 flex-col bg-white dark:bg-zinc-900
               rounded-t-[24px] md:shrink md:rounded-none md:w-[55%]
               px-5 pt-5 md:px-6 md:pt-8 pb-0
-              md:min-h-0 md:flex-1 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
+              min-h-0 md:flex-1 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
           >
             {/* Fase 25: se quitó el `pb-6` de este bloque.
                 Antes había DOS espacios sumados: `pb-4` del panel (16px) más
