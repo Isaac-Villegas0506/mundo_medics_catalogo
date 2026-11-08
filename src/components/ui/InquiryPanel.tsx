@@ -15,18 +15,22 @@ import {
 } from '@/utils/inquiryList';
 
 /**
- * Fase 22 — Panel flotante de la «lista de consulta».
+ * Fase 24 — Lista de consulta, rediseñada para ocupar poco espacio.
  *
- * Aparece sólo cuando el cliente ha guardado algún producto. Muestra cuántos
- * lleva y permite enviarlos TODOS en un único mensaje de WhatsApp, además de
- * quitarlos uno a uno.
+ * Antes era una barra ancha fija más un panel a pantalla completa: entre los dos
+ * tapaban buena parte del catálogo y no dejaban ver los productos.
+ *
+ * Ahora:
+ *   - La barra flotante es compacta (una sola línea, ~44 px).
+ *   - Al abrirla, el panel llega como hoja inferior con ALTURA MÁXIMA del 60%
+ *     de la pantalla y los productos en lista desplazable.
+ *   - Tiene un asa para cerrarla arrastrando y un botón «Cerrar».
+ *   - Se puede contraer para seguir mirando el catálogo con la lista a mano.
  */
 export default function InquiryPanel() {
   const whatsappNumber = useWhatsappNumber();
   const [items, setItems] = useState<InquiryItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  /* Evita el parpadeo en el primer render: hasta leer localStorage no sabemos
-     si hay elementos, así que no se pinta nada. */
   const [mounted, setMounted] = useState(false);
 
   const reload = useCallback(() => {
@@ -39,7 +43,6 @@ export default function InquiryPanel() {
 
     const onUpdate = () => reload();
     window.addEventListener(INQUIRY_EVENT, onUpdate);
-    // Sincroniza entre pestañas abiertas.
     const onStorage = (e: StorageEvent) => {
       if (e.key === INQUIRY_KEY) reload();
     };
@@ -51,7 +54,7 @@ export default function InquiryPanel() {
     };
   }, [reload]);
 
-  // Bloquea el scroll del fondo cuando el panel está abierto.
+  // Bloquea el scroll del fondo sólo mientras el panel está abierto.
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
@@ -59,6 +62,16 @@ export default function InquiryPanel() {
     return () => {
       document.body.style.overflow = prev;
     };
+  }, [isOpen]);
+
+  // Escape cierra el panel.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
   if (!mounted || items.length === 0) return null;
@@ -72,25 +85,20 @@ export default function InquiryPanel() {
 
   return (
     <>
-      {/* Barra flotante.
-          Fase 23: se coloca ENCIMA de la barra de navegación (BottomNav mide
-          64px) y no la tapa. En escritorio va al pie de la ventana. */}
-      <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom)+12px)] left-1/2 z-30 w-[calc(100%-2rem)] max-w-[520px] -translate-x-1/2 md:bottom-6">
-        <div className="flex items-center gap-3 rounded-2xl border border-black/5 bg-[#1a1a1a] px-3 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] mm-in">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
-            <span className="material-symbols-outlined text-[18px]">checklist</span>
-          </span>
-
+      {/* Barra compacta: una sola línea, pegada sobre la nav inferior.
+          Antes tenía dos líneas de texto y ocupaba casi el doble. */}
+      <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom)+8px)] left-1/2 z-30 w-[calc(100%-1.5rem)] max-w-[420px] -translate-x-1/2 md:bottom-5">
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] py-1.5 pl-1.5 pr-2 shadow-[0_6px_24px_rgba(0,0,0,0.28)] mm-in">
           <button
             onClick={() => setIsOpen(true)}
-            className="min-w-0 flex-1 text-left"
-            aria-label="Ver mi lista de consulta"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-1 text-left"
+            aria-label={`Ver mi lista: ${items.length} producto${items.length === 1 ? '' : 's'}`}
           >
-            <span className="block text-[12px] font-semibold leading-tight text-white">
-              {items.length} producto{items.length === 1 ? '' : 's'} en tu lista
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
+              <span className="material-symbols-outlined text-[17px]">checklist</span>
             </span>
-            <span className="block truncate text-[10px] text-white/60">
-              Toca para ver o enviar
+            <span className="truncate text-[12px] font-semibold text-white">
+              {items.length} en tu lista
             </span>
           </button>
 
@@ -98,73 +106,78 @@ export default function InquiryPanel() {
             onClick={handleSend}
             disabled={!whatsappUrl}
             aria-label="Consultar todos por WhatsApp"
-            className="flex shrink-0 items-center gap-1 rounded-xl bg-[#25D366] px-2.5 py-2 text-[11px] font-semibold text-white transition-transform active:scale-95 disabled:opacity-50"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-[#25D366] px-3 py-2 text-[11px] font-semibold text-white transition-transform active:scale-95 disabled:opacity-50"
           >
-            <span className="material-symbols-outlined text-[16px]">send</span>
+            <span className="material-symbols-outlined text-[15px]">send</span>
             <span className="hidden sm:inline">Enviar</span>
           </button>
         </div>
       </div>
 
-      {/* Panel desplegable.
-          Fase 23: en móvil se ancla sobre la barra de navegación (no encima de
-          ella) y su altura máxima descuenta la nav + zona segura, para que el
-          botón de enviar quede siempre accesible. */}
+      {/* Panel: hoja inferior de altura acotada (máx. 60dvh).
+          No llega arriba ni cubre el catálogo entero. */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 md:items-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/35"
           onClick={() => setIsOpen(false)}
           role="dialog"
           aria-modal="true"
           aria-labelledby="inquiry-title"
         >
           <div
-            className="flex max-h-[calc(85dvh-64px-env(safe-area-inset-bottom))] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[28px] mb-bottom-nav bg-white md:mb-0 md:rounded-[28px] mm-in-sheet"
+            className="mb-bottom-nav flex max-h-[60dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[24px] bg-white mm-in-sheet md:mb-0 md:rounded-[24px]"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Cabecera */}
-            <div className="flex shrink-0 items-center justify-between border-b border-[#ece9e2] px-5 py-4">
-              <div>
-                <h2 id="inquiry-title" className="text-[15px] font-semibold text-[#1a1a1a]">
-                  Mi lista de consulta
+            {/* Asa para cerrar arrastrando (sólo visual + botón) */}
+            <div className="flex shrink-0 flex-col items-center pt-2">
+              <div className="h-1 w-10 rounded-full bg-[#ddd]" />
+            </div>
+
+            {/* Cabecera compacta */}
+            <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
+              <div className="min-w-0">
+                <h2 id="inquiry-title" className="text-[14px] font-semibold text-[#1a1a1a]">
+                  Tu lista de consulta
                 </h2>
-                <p className="text-[11px] text-[#6b6b6b]">
-                  Se enviarán todos en un solo mensaje
+                <p className="truncate text-[10px] text-[#6b6b6b]">
+                  Todos en un solo mensaje
                 </p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                aria-label="Cerrar"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-[#666] transition-colors hover:bg-[#f4f2f0] active:scale-90"
+                aria-label="Cerrar lista"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-[#666] transition-colors hover:bg-[#f4f2f0] active:scale-90"
               >
-                <span className="material-symbols-outlined text-[21px]">close</span>
+                <span className="material-symbols-outlined text-[19px]">close</span>
               </button>
             </div>
 
-            {/* Lista */}
-            <div className="flex-1 overflow-y-auto px-4 py-3">
+            {/* Productos: filas densas y desplazables */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-2">
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="mb-2 flex items-center gap-3 rounded-2xl border border-[#ece9e2] p-2.5"
+                  className="mb-1.5 flex items-center gap-2.5 rounded-xl bg-[#f8f8f6] p-2"
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f4f2f0]">
+                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#eeecea]">
                     {item.image_url ? (
                       <Image
                         src={item.image_url}
                         alt={item.name}
-                        width={48}
-                        height={48}
-                        className="h-full w-full object-cover"
+                        width={36}
+                        height={36}
+                        className="size-full object-cover"
                       />
                     ) : (
-                      <span className="material-symbols-outlined text-[17px] text-[#aaa]">image</span>
+                      <span className="material-symbols-outlined text-[15px] text-[#aaa]">image</span>
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-[#1a1a1a]">{item.name}</p>
-                    <p className="truncate text-[11px] text-[#6b6b6b]">
+                    <p className="truncate text-[12px] font-medium leading-tight text-[#1a1a1a]">
+                      {item.name}
+                    </p>
+                    <p className="truncate text-[10px] leading-tight text-[#6b6b6b]">
                       {[item.color_name, item.size].filter(Boolean).join(' · ') || 'Sin variante'}
                     </p>
                   </div>
@@ -172,33 +185,33 @@ export default function InquiryPanel() {
                   <button
                     onClick={() => removeFromInquiry(item.id)}
                     aria-label={`Quitar ${item.name} de la lista`}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#aaa] transition-colors hover:bg-[#f4f2f0] hover:text-[#c62828] active:scale-90"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#aaa] transition-colors hover:bg-[#ececea] hover:text-[#c62828] active:scale-90"
                   >
-                    <span className="material-symbols-outlined text-[17px]">close</span>
+                    <span className="material-symbols-outlined text-[15px]">close</span>
                   </button>
                 </div>
               ))}
             </div>
 
-            {/* Acciones */}
-            <div className="shrink-0 border-t border-[#ece9e2] px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
-              <button
-                onClick={handleSend}
-                disabled={!whatsappUrl}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3.5 text-[14px] font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-[19px]">send</span>
-                Consultar {items.length} por WhatsApp
-              </button>
-
+            {/* Acciones: una fila, sin ocupar de más */}
+            <div className="flex shrink-0 items-center gap-2 border-t border-[#ece9e2] px-3 pb-[calc(10px+env(safe-area-inset-bottom))] pt-2.5">
               <button
                 onClick={() => {
                   clearInquiry();
                   setIsOpen(false);
                 }}
-                className="mt-2 w-full py-2 text-[12px] font-medium text-[#6b6b6b] underline underline-offset-2 hover:text-[#1a1a1a]"
+                className="shrink-0 rounded-xl px-2.5 py-2 text-[11px] font-medium text-[#6b6b6b] underline underline-offset-2 hover:text-[#1a1a1a]"
               >
-                Vaciar la lista
+                Vaciar
+              </button>
+
+              <button
+                onClick={handleSend}
+                disabled={!whatsappUrl}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#25D366] py-2.5 text-[12px] font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[16px]">send</span>
+                Consultar {items.length}
               </button>
             </div>
           </div>

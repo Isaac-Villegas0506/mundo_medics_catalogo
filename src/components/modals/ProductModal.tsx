@@ -314,14 +314,35 @@ function ModalContent({
   /* Fase 22 — añadir a la lista de consulta (varios productos en un mensaje).
      Se guarda junto al color y la talla elegidos para no tener que preguntar. */
   const [inInquiry, setInInquiry] = React.useState(false);
-  const [inquiryToast, setInquiryToast] = React.useState(false);
+
+  /* Fase 24: burbuja que explica qué hace el icono de la lista. Se muestra la
+     primera vez (y si el cliente la descarta, no vuelve a aparecer). */
+  const [showHint, setShowHint] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem('inquiryHintDismissed');
+      if (!dismissed) setShowHint(true);
+    } catch {
+      setShowHint(true);
+    }
+  }, []);
+
+  const dismissHint = () => {
+    setShowHint(false);
+    try {
+      localStorage.setItem('inquiryHintDismissed', '1');
+    } catch {
+      /* Sin localStorage la burbuja simplemente vuelve en la próxima visita. */
+    }
+  };
 
   React.useEffect(() => {
     setInInquiry(getInquiryList().some((x) => x.id === product.id));
   }, [product.id]);
 
   const addToInquiryList = () => {
-    const existed = addToInquiry({
+    addToInquiry({
       id: product.id,
       name: product.name,
       color_name: selectedColor?.label || product.color_name,
@@ -329,10 +350,8 @@ function ModalContent({
       image_url: product.image_url,
     });
     setInInquiry(true);
-    setInquiryToast(true);
-    // El aviso desaparece solo; el botón queda marcado mientras esté en la lista.
-    window.setTimeout(() => setInquiryToast(false), 2200);
-    return existed;
+    // La burbuja deja de molestar en cuanto el cliente ya sabe para qué sirve.
+    dismissHint();
   };
 
   return (
@@ -398,7 +417,7 @@ function ModalContent({
             hermano real en el flujo flex y este bloque se encoge con `flex-1`. */}
         <div
           ref={scrollRef}
-          className="w-full flex-1 min-h-0 overflow-y-auto md:overflow-hidden no-scrollbar flex flex-col md:flex-row"
+          className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar flex flex-col md:flex-row"
         >
           {/* Left: Image
               Fase 23: en móvil la imagen pasa de `aspect-[4/5]` (≈125% del
@@ -406,7 +425,7 @@ function ModalContent({
               Con la proporción anterior, el nombre del producto quedaba fuera
               de pantalla y había que deslizar para verlo; ahora es visible al
               abrir. En escritorio se mantiene el diseño de dos columnas. */}
-          <div className="w-full md:w-[45%] h-[32dvh] md:h-full md:aspect-auto relative flex-shrink-0 md:px-5 md:py-5 md:pr-2.5 z-0">
+          <div className="relative w-full shrink-0 h-[30dvh] md:w-[45%] md:h-full md:px-5 md:py-5 md:pr-2.5 z-0">
             <div
               className="sticky top-0 w-full h-full bg-[#eeecea] md:rounded-[20px] overflow-hidden flex items-center justify-center relative touch-pan-y"
               {...swipeHandlers}
@@ -433,14 +452,11 @@ function ModalContent({
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
                     {/* Indicador de que la foto se puede ampliar.
-                        Posición elegida midiendo la zona de imagen del modal:
-                        - Arriba-derecha: ocupado por cerrar y favorito (z-50).
-                        - Abajo-derecha en móvil: tapado por el panel de contenido,
-                          que se superpone 28px (mt-[-28px]).
-                        - Abajo-centro: ocupado por los puntos del carrusel.
-                        Queda abajo-IZQUIERDA, libre, por encima del solapamiento
-                        (bottom-8 = 32px > 28px) en móvil. */}
-                    <span className="absolute bottom-8 left-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-[#1a1a1a] shadow-sm md:bottom-8 md:left-8">
+                        Fase 24: ya no hay solapamiento del panel de contenido
+                        (se quitó el `mt-[-28px]`), así que la esquina
+                        inferior derecha está libre. Se mantiene abajo-izquierda
+                        porque no choca con los puntos del carrusel. */}
+                    <span className="absolute bottom-8 left-4 z-20 flex size-9 items-center justify-center rounded-full bg-white/85 text-[#1a1a1a] shadow-sm md:bottom-8 md:left-8">
                       <span className="material-symbols-outlined text-[18px]">zoom_in</span>
                     </span>
                   </button>
@@ -526,10 +542,10 @@ function ModalContent({
 
           {/* Right: Content */}
           <div
-            className="w-full md:w-[55%] flex flex-col bg-white dark:bg-zinc-900 relative z-10 
-              rounded-t-[28px] md:rounded-none mt-[-28px] md:mt-0 
-              pt-7 md:pt-8 px-5 md:px-6 flex-shrink-0 
-              md:overflow-y-auto md:flex-1 no-scrollbar min-h-0 mm-fade-in-delayed"
+            className="relative z-10 flex w-full flex-col bg-white dark:bg-zinc-900
+              rounded-t-[24px] md:rounded-none md:w-[55%]
+              px-5 pb-4 pt-5 md:px-6 md:pt-8 md:pb-0
+              md:min-h-0 md:flex-1 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
           >
             <div className="pb-6 md:pb-8">
               <h2 className="text-[22px] md:text-3xl font-semibold text-[#1a1a1a] dark:text-zinc-100 tracking-tight mb-2 md:mb-3 md:pr-10 leading-snug">
@@ -748,26 +764,59 @@ function ModalContent({
             </span>
           )}
 
-          {/* Añadir a la lista de consulta: botón cuadrado, 48x48 (mínimo
-              táctil de 44). Cambia a verde cuando el producto ya está dentro. */}
-          <button
-            type="button"
-            onClick={addToInquiryList}
-            aria-label={inInquiry ? 'Ya está en tu lista de consulta' : 'Añadir a mi lista de consulta'}
-            aria-pressed={inInquiry}
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors active:scale-[0.97] ${
-              inInquiry
-                ? 'bg-[#eef7ee] text-[#2e7d32] dark:bg-zinc-800 dark:text-[#7bc47f]'
-                : 'bg-[#f2f2f0] text-[#1a1a1a] dark:bg-zinc-800 dark:text-zinc-100 hover:bg-[#e8e8e4] dark:hover:bg-zinc-700'
-            }`}
-          >
-            <span
-              className="material-symbols-outlined text-[21px]"
-              style={{ fontVariationSettings: inInquiry ? "'FILL' 1" : "'FILL' 0, 'wght' 300" }}
+          {/* Botón de lista con burbuja explicativa (Fase 24).
+              Un icono suelto no comunica para qué sirve, así que la primera vez
+              se muestra una burbuja. Se descarta y no vuelve a salir. */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={addToInquiryList}
+              aria-label={
+                inInquiry
+                  ? 'Ya está en tu lista de consulta'
+                  : 'Añadir a la lista para consultar varios productos juntos'
+              }
+              aria-pressed={inInquiry}
+              aria-describedby="inquiry-hint"
+              className={`flex size-12 items-center justify-center rounded-2xl transition-colors active:scale-[0.97] ${
+                inInquiry
+                  ? 'bg-[#eef7ee] text-[#2e7d32] dark:bg-zinc-800 dark:text-[#7bc47f]'
+                  : 'bg-[#f2f2f0] text-[#1a1a1a] hover:bg-[#e8e8e4] dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700'
+              }`}
             >
-              {inInquiry ? 'check_circle' : 'add_shopping_cart'}
-            </span>
-          </button>
+              <span
+                className="material-symbols-outlined text-[21px]"
+                style={{ fontVariationSettings: inInquiry ? "'FILL' 1" : "'FILL' 0, 'wght' 300" }}
+              >
+                {inInquiry ? 'check_circle' : 'playlist_add'}
+              </span>
+            </button>
+
+            {showHint && (
+              <div
+                id="inquiry-hint"
+                role="status"
+                className="absolute bottom-full right-0 z-30 mb-2 w-[230px] rounded-2xl bg-[#1a1a1a] px-3 py-2.5 text-white shadow-lg mm-in-pop"
+              >
+                <p className="text-[11px] leading-snug">
+                  <strong className="font-semibold">Añade a tu lista</strong> y consulta varios
+                  productos en <strong className="font-semibold">un solo mensaje</strong>.
+                </p>
+                <button
+                  type="button"
+                  onClick={dismissHint}
+                  aria-label="Entendido, ocultar aviso"
+                  className="mt-1.5 text-[10px] font-semibold text-white/70 underline underline-offset-2 hover:text-white"
+                >
+                  Entendido
+                </button>
+                <span
+                  aria-hidden="true"
+                  className="absolute -bottom-1 right-5 size-2.5 rotate-45 bg-[#1a1a1a]"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
