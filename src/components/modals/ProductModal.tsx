@@ -11,7 +11,7 @@ import { CARD_FIELDS } from '@/utils/catalogConstants';
 import { getSelectedColor } from '@/utils/productColor';
 import { useSwipeGallery } from '@/hooks/useSwipeGallery';
 import { buildWhatsappUrl } from '@/utils/whatsapp';
-import { addToInquiry, getInquiryList } from '@/utils/inquiryList';
+import { addToInquiry, getInquiryList, removeFromInquiry } from '@/utils/inquiryList';
 import ImageLightbox from '@/components/ui/ImageLightbox';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
@@ -342,6 +342,16 @@ function ModalContent({
   }, [product.id]);
 
   const addToInquiryList = () => {
+    /* Fase 26 — BUG: el botón sólo añadía. Aunque mostraba el check verde
+       («Ya está en tu lista»), al pulsarlo no quitaba nada: volvía a añadir el
+       producto, así que era imposible deseleccionarlo desde el modal.
+       Ahora funciona como interruptor: si ya está, lo quita. */
+    if (inInquiry) {
+      removeFromInquiry(product.id);
+      setInInquiry(false);
+      return;
+    }
+
     addToInquiry({
       id: product.id,
       name: product.name,
@@ -367,12 +377,13 @@ function ModalContent({
           antes el spring de framer-motion). El arrastre del asa se gestiona con
           Pointer Events y se refleja en `translateY(dragY)` con transición CSS.
 
-          Fase 25: el panel ocupa 92dvh y llega hasta el borde inferior. El
-          relleno de la barra de navegación lo pone el PIE con `pb-bottom-nav`,
-          no un margen del panel: con margen el modal se veía "flotando" y más
-          pequeño, con una franja muerta debajo. */}
+          Fase 26: el panel ya NO tiene altura fija (`h-[92dvh]`). Ahora usa
+          `max-h-[92dvh]`, así se adapta a su contenido y no deja un bloque
+          blanco vacío cuando el producto tiene pocos datos. El modal se dibuja
+          ENCIMA de la barra de navegación (z-70 > z-40), así que no hay que
+          reservar su altura. */}
       <div
-        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] max-h-[100dvh] md:max-h-[calc(100dvh-96px)] h-[92dvh] md:h-[82dvh] w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
+        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] max-h-[92dvh] md:max-h-[calc(100dvh-96px)] w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
         style={{
           /* El arrastre se aplica con la variable CSS `--mm-drag-y`, no con
              `transform` directo: así no se pisa el centrado de escritorio
@@ -412,13 +423,14 @@ function ModalContent({
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
         </button>
 
-        {/* Scrollable Container — ocupa el espacio que deja el pie de acciones.
-            Fase 7: antes el pie era `absolute` y flotaba sobre el contenido;
-            por eso los botones tapaban el final de la ficha. Ahora el pie es un
-            hermano real en el flujo flex y este bloque se encoge con `flex-1`. */}
+        {/* Contenedor desplazable (Fase 26).
+            Antes tenía `flex-1`, que lo estiraba hasta llenar el modal AUNQUE
+            el contenido fuera corto: eso dejaba un hueco blanco grande entre
+            las tallas y el pie. Ahora crece sólo hasta su contenido
+            (`grow`, no `flex-1`) y el scroll aparece únicamente si hace falta. */}
         <div
           ref={scrollRef}
-          className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar flex flex-col md:flex-row"
+          className="w-full min-h-0 grow overflow-y-auto overscroll-contain no-scrollbar flex flex-col md:flex-row"
         >
           {/* Left: Image
               Fase 23: en móvil la imagen pasa de `aspect-[4/5]` (≈125% del
@@ -750,12 +762,11 @@ function ModalContent({
             el nombre del producto fuera de pantalla.
             Ahora va como botón-icono cuadrado junto a WhatsApp: la misma
             función en una sola fila, sin robar altura a la ficha. */}
-        {/* Fase 25: el pie aporta el relleno inferior completo.
-            - `pt-2` (antes pt-3): menos aire entre el contenido y los botones.
-            - `pb-bottom-nav`: en móvil reserva los 64px de la barra de
-              navegación para que los botones NO queden debajo de ella. Con
-              `margin-bottom` el panel flotaba y se veía más pequeño. */}
-        <div className="z-20 flex w-full shrink-0 items-center gap-2 border-t border-[#f0f0ee] bg-white px-4 pt-2 pb-bottom-nav md:ml-auto md:w-[55%] md:gap-3 md:px-6 dark:border-zinc-800 dark:bg-zinc-900">
+        {/* Fase 26: el pie usa `pb-modal-footer` (16px + zona segura), no los
+            64px de la nav. El modal se dibuja ENCIMA de la barra de navegación
+            (z-70 > z-40), así que reservar su altura sólo dejaba una franja
+            blanca muerta entre los botones y el borde de la pantalla. */}
+        <div className="z-20 flex w-full shrink-0 items-center gap-2 border-t border-[#f0f0ee] bg-white px-4 pt-2 pb-modal-footer md:ml-auto md:w-[55%] md:gap-3 md:px-6 dark:border-zinc-800 dark:bg-zinc-900">
           <Link
             href={`/product?id=${product.id}`}
             className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 text-center leading-tight bg-[#f2f2f0] dark:bg-zinc-800 text-[#1a1a1a] dark:text-zinc-100 rounded-2xl text-[13px] md:text-sm font-semibold hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
