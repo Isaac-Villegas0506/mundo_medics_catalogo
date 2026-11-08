@@ -422,21 +422,30 @@ function ModalContent({
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>close</span>
         </button>
 
-        {/* Contenedor desplazable (Fase 27).
-            Vuelve `flex-1`: con el panel a altura fija, este bloque ocupa el
-            espacio que queda entre arriba y el pie, y el cliente DESLIZA
-            dentro de él para ver el resto de la ficha. */}
+        {/* Contenedor desplazable (Fase 29).
+            `flex-1 min-h-0` en columna: la imagen (`grow`) absorbe el alto
+            sobrante y el panel de contenido se queda con el suyo. Así no queda
+            ninguna franja vacía entre las tallas y el pie.
+            El scroll sigue aquí: si el contenido es más alto que el espacio,
+            se desliza (el cliente ve el resto deslizando). */}
         <div
           ref={scrollRef}
           className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar flex flex-col md:flex-row"
         >
           {/* Left: Image
-              Fase 27: la imagen vuelve a tener presencia. Con `h-[30dvh]` se
-              veía diminuta: queda un 42% de la pantalla, que en un móvil de
-              800px son ~336px de alto. El contenido sigue siendo alcanzable
-              deslizando, y el nombre del producto queda a la vista justo
-              debajo porque el panel de contenido solapa 12px. */}
-          <div className="relative w-full shrink-0 h-[42dvh] md:w-[45%] md:h-full md:px-5 md:py-5 md:pr-2.5 z-0">
+              Fase 29 — el hueco se elimina haciendo que la IMAGEN absorba el
+              espacio sobrante, no dejándolo como zona vacía.
+
+              Con `h-[42dvh]` fija y el modal a 92dvh, lo que sobraba se
+              acumulaba bajo el contenido: al estar el panel en blanco, el hueco
+              se veía como una franja grande entre las tallas y el pie.
+
+              Ahora la imagen usa `min-h-[42dvh]` y `grow`: garantiza esos
+              336 px mínimos y, si sobra altura, la ocupa ella (se ve más
+              grande la foto). El contenido queda con su altura natural y el pie
+              pegado a él.
+              En escritorio se mantiene `md:h-full` con las dos columnas. */}
+          <div className="relative w-full shrink-0 min-h-[42dvh] grow md:grow-0 md:w-[45%] md:min-h-0 md:h-full md:px-5 md:py-5 md:pr-2.5 z-0">
             <div
               className="sticky top-0 w-full h-full bg-[#eeecea] md:rounded-[20px] overflow-hidden flex items-center justify-center relative touch-pan-y"
               {...swipeHandlers}
@@ -551,23 +560,18 @@ function ModalContent({
             </div>
           </div>
 
-          {/* Right: Content
-              Fase 28 — CAUSA EXACTA DEL HUECO.
-
-              El wrapper lleva `flex-1` y el modal es gris (`bg-[#eeecea]`).
-              Este panel, en móvil, NO tenía `flex-1` (solo `md:flex-1`), así
-              que se quedaba en su altura natural (~200 px). El sobrante del
-              wrapper quedaba a la vista con el GRIS del modal: ese era el
-              hueco grande entre las tallas y los botones.
-
-              Con `flex-1` también en móvil, el panel absorbe ese sobrante y lo
-              rellena de blanco, así el pie queda justo bajo el contenido.
-              `min-h-0` permite que se encoja correctamente dentro del flex. */}
+          {/* Right: Content (Fase 29).
+              Este panel NO crece en móvil (`shrink-0`): se queda con su altura
+              natural para que el pie quede justo debajo. Si creciera, absorbería
+              el sobrante y volvería a aparecer el hueco entre el último dato y
+              los botones.
+              Quien absorbe el sobrante es la IMAGEN (`grow`), que se ve más
+              grande. En escritorio sí crece y scrollea por su cuenta. */}
           <div
-            className="relative z-10 flex w-full flex-1 flex-col bg-white dark:bg-zinc-900
-              rounded-t-[24px] md:rounded-none md:w-[55%]
+            className="relative z-10 flex w-full shrink-0 flex-col bg-white dark:bg-zinc-900
+              rounded-t-[24px] md:shrink md:rounded-none md:w-[55%]
               px-5 pt-5 md:px-6 md:pt-8 pb-0
-              min-h-0 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
+              md:min-h-0 md:flex-1 md:overflow-y-auto no-scrollbar mm-fade-in-delayed"
           >
             {/* Fase 25: se quitó el `pb-6` de este bloque.
                 Antes había DOS espacios sumados: `pb-4` del panel (16px) más
@@ -575,12 +579,10 @@ function ModalContent({
                 que se veía como un salto raro al final del contenido.
                 Ahora el único relleno inferior lo pone el propio pie
                 (`pb-modal-footer`), que además respeta la zona segura. */}
-            {/* Fase 28: `flex-1` para que el contenido ocupe el alto del panel.
-                Sin esto el panel rellenaba de blanco, pero este bloque se
-                quedaba arriba y el sobrante aparecía entre el último dato y el
-                pie. Al ser el panel flex-col, esto pega el contenido arriba y
-                deja el pie justo debajo. */}
-            <div className="flex-1">
+            {/* Fase 29: sin `flex-1`. El panel ya no crece en móvil, así que
+                este bloque debe quedarse con su altura natural para que el pie
+                quede inmediatamente debajo del último dato. */}
+            <div>
               <h2 className="text-[22px] md:text-3xl font-semibold text-[#1a1a1a] dark:text-zinc-100 tracking-tight mb-2 md:mb-3 md:pr-10 leading-snug">
                 {product.name}
               </h2>
