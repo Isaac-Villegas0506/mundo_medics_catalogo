@@ -147,6 +147,18 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  /* Fase 32 — `.pb-safe` ANULABA el padding del footer.
+     Daba `padding-bottom: env(safe-area-inset-bottom)`, que en Android/PC es 0.
+     Si el elemento también llevaba `p-4`, esta regla lo sobrescribía y el botón
+     quedaba pegado al borde inferior (se cortaba).
+
+     Esta utilidad SUMA el padding base (16px) + la zona segura, así funciona en
+     ambos casos: en Android/PC deja 16px y en iPhone con indicador de inicio
+     añade los 34px. */
+  .pb-safe-add {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
   .pt-safe {
     padding-top: env(safe-area-inset-top);
   }
