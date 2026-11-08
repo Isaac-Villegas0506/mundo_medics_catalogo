@@ -125,7 +125,7 @@ export default function InquiryPanel() {
           aria-labelledby="inquiry-title"
         >
           <div
-            className="mb-bottom-nav flex max-h-[60dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[24px] bg-white mm-in-sheet md:mb-0 md:rounded-[24px]"
+            className="flex max-h-[60dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[24px] bg-white pb-bottom-nav mm-in-sheet md:rounded-[24px] md:pb-0"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Asa para cerrar arrastrando (sólo visual + botón) */}

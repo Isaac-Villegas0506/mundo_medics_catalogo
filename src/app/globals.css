@@ -159,18 +159,18 @@
     padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
   }
 
-  /* Fase 23 — el modal en móvil debe dejar sitio a la barra de navegación.
-     El panel se ancla abajo (`bottom-0`) con 92dvh, así que su pie de acciones
-     quedaba DEBAJO del BottomNav (64px, z-40), que lo tapaba.
-     Se sube el panel exactamente la altura de la barra. */
-  .mb-bottom-nav {
-    margin-bottom: calc(64px + env(safe-area-inset-bottom));
+  /* Fase 25 — el modal en móvil llega hasta la barra de navegación.
+     Antes se usaba `margin-bottom: 64px`, que SEPARABA el panel del borde y lo
+     dejaba "flotando" encima de la nav: se veía más pequeño y con una franja
+     muerta debajo. Ahora el panel ocupa el alto completo y su PIE añade el
+     relleno necesario para no quedar bajo la nav. */
+  .pb-bottom-nav {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 
   @media (min-width: 768px) {
-    /* En escritorio el modal va centrado: no hay barra inferior. */
-    .mb-bottom-nav {
-      margin-bottom: 0;
+    .pb-bottom-nav {
+      padding-bottom: 0;
     }
   }
 

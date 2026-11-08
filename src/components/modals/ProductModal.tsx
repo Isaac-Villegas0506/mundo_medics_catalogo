@@ -367,11 +367,12 @@ function ModalContent({
           antes el spring de framer-motion). El arrastre del asa se gestiona con
           Pointer Events y se refleja en `translateY(dragY)` con transición CSS.
 
-          Fase 23: la altura descuenta la barra de navegación inferior (64px) en
-          móvil. Antes eran 92dvh desde bottom-0, así que el pie quedaba bajo el
-          BottomNav y éste lo tapaba. Ahora: 88dvh + `mb-bottom-nav`. */}
+          Fase 25: el panel ocupa 92dvh y llega hasta el borde inferior. El
+          relleno de la barra de navegación lo pone el PIE con `pb-bottom-nav`,
+          no un margen del panel: con margen el modal se veía "flotando" y más
+          pequeño, con una franja muerta debajo. */}
       <div
-        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] max-h-[calc(100dvh-64px-env(safe-area-inset-bottom))] md:max-h-[calc(100dvh-96px)] h-[88dvh] md:h-[82dvh] mb-bottom-nav w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
+        className={`fixed bottom-0 md:bottom-auto md:top-1/2 left-0 right-0 md:left-1/2 z-[70] bg-[#eeecea] dark:bg-zinc-900 md:bg-white md:dark:bg-zinc-900 rounded-t-[28px] md:rounded-[28px] max-h-[100dvh] md:max-h-[calc(100dvh-96px)] h-[92dvh] md:h-[82dvh] w-full md:w-[840px] md:-translate-x-1/2 md:-translate-y-1/2 shadow-[0_-6px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-6px_40px_rgba(0,0,0,0.4)] md:shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden mm-draggable ${closing ? 'mm-out-sheet' : 'mm-in-sheet'}`}
         style={{
           /* El arrastre se aplica con la variable CSS `--mm-drag-y`, no con
              `transform` directo: así no se pisa el centrado de escritorio
@@ -622,9 +623,12 @@ function ModalContent({
                 </div>
               )}
 
-              {/* Size selector */}
+              {/* Size selector
+                  Fase 25: sin `mb-5`. Al ser el último bloque del panel en
+                  móvil, ese margen se sumaba al `pt` del pie y dejaba una
+                  franja blanca visible entre las tallas y los botones. */}
               {product.sizes && product.sizes.length > 0 && (
-                <div className="mb-5">
+                <div>
                   <div className="flex justify-between items-center mb-2.5">
                     <span className="text-[11px] font-semibold text-[#aaa] dark:text-zinc-500 uppercase tracking-widest block">Talla</span>
                     <button
@@ -746,7 +750,12 @@ function ModalContent({
             el nombre del producto fuera de pantalla.
             Ahora va como botón-icono cuadrado junto a WhatsApp: la misma
             función en una sola fila, sin robar altura a la ficha. */}
-        <div className="z-20 flex w-full shrink-0 items-center gap-2 border-t border-[#f0f0ee] bg-white px-4 pb-modal-footer pt-3 md:ml-auto md:w-[55%] md:gap-3 md:px-6 dark:border-zinc-800 dark:bg-zinc-900">
+        {/* Fase 25: el pie aporta el relleno inferior completo.
+            - `pt-2` (antes pt-3): menos aire entre el contenido y los botones.
+            - `pb-bottom-nav`: en móvil reserva los 64px de la barra de
+              navegación para que los botones NO queden debajo de ella. Con
+              `margin-bottom` el panel flotaba y se veía más pequeño. */}
+        <div className="z-20 flex w-full shrink-0 items-center gap-2 border-t border-[#f0f0ee] bg-white px-4 pt-2 pb-bottom-nav md:ml-auto md:w-[55%] md:gap-3 md:px-6 dark:border-zinc-800 dark:bg-zinc-900">
           <Link
             href={`/product?id=${product.id}`}
             className="flex-1 min-w-0 flex items-center justify-center h-12 px-2 text-center leading-tight bg-[#f2f2f0] dark:bg-zinc-800 text-[#1a1a1a] dark:text-zinc-100 rounded-2xl text-[13px] md:text-sm font-semibold hover:bg-[#e8e8e4] dark:hover:bg-zinc-700 transition-colors active:scale-[0.97]"
