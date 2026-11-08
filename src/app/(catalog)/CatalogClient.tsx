@@ -58,6 +58,10 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
   const [reloadKey, setReloadKey] = useState(0);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  /* Fase 13: mientras se carga la ficha completa, el modal muestra esqueletos
+     en los bloques que aún no tienen datos, en vez de "Sin descripción" y luego
+     cambiar de golpe. */
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>(initial.settings);
 
@@ -185,11 +189,18 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
   const openProductModal = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
+    setIsLoadingDetail(true);
     // La tarjeta trae solo los campos básicos; cargamos la ficha completa en paralelo.
     (async () => {
-      const { supabase } = await import('@/utils/supabase/client');
-      const { data } = await supabase.from('products').select('*').eq('id', product.id).single();
-      if (data) setSelectedProduct(data as Product);
+      try {
+        const { supabase } = await import('@/utils/supabase/client');
+        const { data } = await supabase.from('products').select('*').eq('id', product.id).single();
+        if (data) setSelectedProduct(data as Product);
+      } catch {
+        /* Si falla, el modal se queda con los datos básicos de la tarjeta. */
+      } finally {
+        setIsLoadingDetail(false);
+      }
     })();
   };
 
@@ -343,6 +354,7 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         product={selectedProduct}
+        isLoadingDetail={isLoadingDetail}
       />
 
       <LocationModal

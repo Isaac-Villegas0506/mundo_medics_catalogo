@@ -1,44 +1,42 @@
-perf(categorias): server component, feedback al pulsar y arreglo del arrastre
+feat(ui): esqueletos de carga en toda la web
 
-OPTIMIZACION DE CATEGORIAS (los 4 problemas reportados)
+Se anadio esqueleto a todas las rutas que aun no lo tenian. Antes solo
+existian en /, /categories y /favorites.
 
-1. Carga lenta: /categories era Client Component, asi que el HTML llegaba
-   vacio, habia que hidratar React y solo entonces corrian DOS consultas
-   SECUENCIALES (categorias -> productos por sus imagenes).
-   Ahora es Server Component: las consultas van en el servidor y el HTML llega
-   con las colecciones ya pintadas. Ademas es ESTATICA con revalidate=60
-   (antes figuraba como dinamica en el build).
-   Medido: 30 ms de respuesta; las 3 categorias estan en el HTML inicial.
-   Lighthouse movil: perf 81, TBT 262 ms, CLS 0.
+Componentes reutilizables: src/components/ui/Skeletons.tsx
+- Skeleton (bloque base), SkeletonTopBar, SkeletonBottomNav, SkeletonChips,
+  SkeletonProductCard, SkeletonProductGrid, SkeletonProductDetail,
+  SkeletonAdminRow, SkeletonAdminList, SkeletonAdminCard.
+- Centralizar el markup evita duplicar la misma animacion en cada loading.tsx
+  y todos respetan prefers-reduced-motion (regla ya existente en globals.css).
 
-2. Demora al entrar a una categoria: ahora las tarjetas usan Link con
-   prefetch, asi que la portada filtrada se descarga antes de pulsar.
+Nuevos loading.tsx (8):
+- admin/loading.tsx              inicio del panel (metricas + grafico + panel)
+- admin/products/loading.tsx     tabla de productos
+- admin/products/[id]/loading.tsx formulario de producto
+- admin/categories/loading.tsx   gestion de categorias
+- admin/featured/loading.tsx     destacados
+- admin/settings/loading.tsx     ajustes
+- favorites/loading.tsx          guardados
+- login/loading.tsx              formulario de acceso
 
-3. Sin respuesta visual al pulsar: nuevo CategoryCard (cliente) que marca la
-   tarjeta como cargando AL INSTANTE con useTransition, mostrando overlay con
-   spinner y "Abriendo...". Antes el onClick no cambiaba nada en pantalla.
+Actualizados para reutilizar los componentes:
+- (catalog)/loading.tsx y categories/loading.tsx
 
-4. Indicadores de carga: nuevos loading.tsx con esqueletos para /categories y
-   para la portada.
+Esqueleto DENTRO del flujo (no solo de ruta):
+- CatalogClient: nuevo estado isLoadingDetail. Al abrir una tarjeta se piden
+  los campos completos de la ficha; hasta que llegan, el modal muestra lineas
+  de esqueleto en la descripcion en vez del texto "Sin descripcion disponible"
+  que luego cambiaba de golpe.
+- ProductModal acepta la prop isLoadingDetail.
 
-ESTRUCTURA: la portada se movio al grupo de rutas (catalog) para que su
-loading.tsx NO envuelva a /product. En la Fase 7 un loading.tsx en la raiz
-hacia que /product respondiera 200 en vez de 404; verificado que el 404 sigue
-funcionando.
+IMPORTANTE: NO se creo product/loading.tsx a proposito.
+Un loading.tsx en esa ruta envuelve la pagina en Suspense, Next responde 200
+en vez de 404 e inyecta noindex. Ya habia pasado en la Fase 7 con el loading
+raiz. La ficha resuelve el producto en el servidor antes de renderizar (tarda
+milisegundos) y el esqueleto de la tarjeta ya cubre la espera.
 
-ARREGLO DEL ARRASTRE DEL MODAL (que no animaba)
-- onDragEnd leia dragY del closure, asi que podia llegar desactualizado y el
-  gesto no cerraba. Ahora la distancia se guarda en el ref.
-- Al soltar sin cerrar habia un salto seco: nuevo estado settling que activa
-  la transicion CSS para que vuelva deslizandose.
-- El transform inline pisaba el centrado de escritorio
-  (md:-translate-x/-y-1/2). Ahora se usa la variable --mm-drag-y y la
-  propiedad CSS translate, que no interfiere con transform. Verificado en el
-  CSS compilado.
-- La zona de arrastre paso de 128x48px a todo el ancho x 56px: antes era facil
-  fallar el gesto y parecia que no funcionaba.
-
-ARREGLO CRITICO: next-env.d.ts estaba corrupto (253 bytes nulos). Regenerado.
-
-Verificado: tsc 0 errores, build OK, matriz de 11 rutas en verde (incluidos
-los 404), CSS mm-draggable compilado, categorias presentes en el HTML.
+Verificado: tsc 0 errores, build OK, matriz de 11 rutas en verde con 0 fallos
+(incluidos los 404 de /product), esqueletos presentes en / (56), /categories
+(36), /favorites (48) y /login (9), y la animacion sigue desactivandose con
+prefers-reduced-motion.

@@ -23,26 +23,31 @@ interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: Product | null;
+  /** Fase 13: la ficha completa aún se está cargando. */
+  isLoadingDetail?: boolean;
 }
 
-export default function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
+export default function ProductModal({ isOpen, onClose, product, isLoadingDetail = false }: ProductModalProps) {
   /* Fase 10: `<AnimatePresence>` reemplazado por `useDelayedUnmount`.
      `closing` indica que debe reproducirse la animación de salida. */
   const { shouldRender, isLeaving } = useDelayedUnmount(!!isOpen && !!product, 280);
 
   if (!shouldRender || !product) return null;
 
-  return <ModalContent onClose={onClose} product={product} closing={isLeaving} />;
+  return <ModalContent onClose={onClose} product={product} closing={isLeaving} isLoadingDetail={isLoadingDetail} />;
 }
 
 function ModalContent({
   onClose,
   product,
   closing,
+  isLoadingDetail,
 }: {
   onClose: () => void;
   product: Product;
   closing: boolean;
+  /** Fase 13: la ficha completa aún se está cargando. */
+  isLoadingDetail: boolean;
 }) {
   const router = useRouter();
   const whatsappNumber = useWhatsappNumber();
@@ -450,9 +455,19 @@ function ModalContent({
               <h2 className="text-[22px] md:text-3xl font-semibold text-[#1a1a1a] dark:text-zinc-100 tracking-tight mb-2 md:mb-3 md:pr-10 leading-snug">
                 {product.name}
               </h2>
-              <p className="text-[#666] dark:text-zinc-400 text-sm font-normal leading-relaxed mb-5">
-                {product.description || 'Sin descripción disponible.'}
-              </p>
+              {/* Fase 13: mientras llega la ficha completa se muestra un
+                  esqueleto, no el texto "Sin descripción" que luego cambiaría. */}
+              {isLoadingDetail && !product.description ? (
+                <div className="mb-5 space-y-2" aria-hidden="true">
+                  <div className="skeleton-shimmer h-3.5 w-full rounded" />
+                  <div className="skeleton-shimmer h-3.5 w-11/12 rounded" />
+                  <div className="skeleton-shimmer h-3.5 w-2/3 rounded" />
+                </div>
+              ) : (
+                <p className="text-[#666] dark:text-zinc-400 text-sm font-normal leading-relaxed mb-5">
+                  {product.description || 'Sin descripción disponible.'}
+                </p>
+              )}
 
               {/* Customization banner (e.g. Bordado personalizado disponible) */}
               {product.customization_options && product.customization_options.length > 0 && (
