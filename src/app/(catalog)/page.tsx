@@ -21,6 +21,13 @@ async function getInitialData(category?: string) {
   let productsQuery = supabase
     .from('products')
     .select(CARD_FIELDS, { count: 'exact' })
+    /* Fase 18: los DESTACADOS van primero.
+       `order_index` es el orden que el dueño define en el panel de destacados,
+       así que los destacados salen en ese orden y por delante del resto.
+       Después se ordena por fecha para que el resto mantenga el criterio
+       anterior (lo más reciente primero). */
+    .order('is_featured', { ascending: false })
+    .order('order_index', { ascending: true })
     .order('created_at', { ascending: false });
 
   /* Fase 7 (11.2): el valor viene de `?category=`, que cualquiera puede

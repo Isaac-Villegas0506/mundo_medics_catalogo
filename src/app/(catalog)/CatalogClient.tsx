@@ -131,6 +131,11 @@ export default function CatalogClient({ initial }: { initial: CatalogInitialData
       let query = supabase
         .from('products')
         .select(CARD_FIELDS, { count: 'exact' })
+        /* Fase 18: mismo criterio que el servidor — destacados primero, en el
+           orden definido en el panel, y después por fecha. Sin esto, al filtrar
+           o buscar el orden cambiaba respecto a la carga inicial. */
+        .order('is_featured', { ascending: false })
+        .order('order_index', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (activeCategory !== 'Todos') {

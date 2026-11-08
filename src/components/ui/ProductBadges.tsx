@@ -74,12 +74,16 @@ interface ProductBadgesProps {
 export default function ProductBadges({ tags, isFeatured, size = 'sm', max = 3, className = 'top-2.5 left-2.5' }: ProductBadgesProps) {
   const visibleTags: string[] = [];
 
-  if (isFeatured) {
-    visibleTags.push('Destacado');
-  }
+  /* Fase 18: «Destacado» ya NO se muestra en el catálogo público.
+     El dueño lo pidió: la etiqueta de destacado es información interna del panel
+     y no debía verse como badge sobre la foto. La prop `isFeatured` se conserva
+     para no romper las llamadas existentes, pero no añade nada. */
+  void isFeatured;
+
   if (tags && tags.length > 0) {
     for (const t of tags) {
-      if (t === 'Destacado' && isFeatured) continue;
+      // Si por datos antiguos existe el tag "Destacado", tampoco se pinta.
+      if (t === 'Destacado') continue;
       visibleTags.push(t);
       if (visibleTags.length >= max) break;
     }
