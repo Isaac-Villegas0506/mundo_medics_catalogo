@@ -38,7 +38,10 @@ export default function ProductCard({ product, index, isFavorite, onToggleFavori
                competía con el resto de peticiones. */
             preload={index === 0}
             fetchPriority={index === 0 ? 'high' : 'auto'}
-            loading={index === 0 ? 'eager' : 'lazy'}
+            /* Fase 13: la primera FILA entera (no sólo la primera tarjeta) se
+               carga de inmediato. En la grilla de 2 columnas en móvil el LCP
+               suele ser la 2.ª tarjeta, y con `lazy` llegaba tarde. */
+            loading={index < 2 ? 'eager' : 'lazy'}
           />
         ) : (
           <div className="absolute inset-0 bg-[#eeecea] dark:bg-zinc-700 flex items-center justify-center">
