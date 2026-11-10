@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/check-icons.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "icons": "node scripts/sync-icons.mjs",
+    "icons:check": "node scripts/check-icons.mjs",
+    "icons:fix": "node scripts/check-icons.mjs --fix"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
