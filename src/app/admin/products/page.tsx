@@ -1,346 +1,493 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
-import { supabase } from '@/utils/supabase/client';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
 import AdminDialog from '@/components/admin/AdminDialog';
+import { logActivity } from '@/utils/activityLog';
+
+/**
+ * Fase 33 — Administración de productos.
+ *
+ * Cambios principales:
+ *  - SE ELIMINÓ EL ARRASTRE. Ya no hay `ReorderGroup`, ni iconos de arrastre, ni
+ *    textos que inviten a arrastrar. El orden se decide en «Destacados».
+ *  - En móvil: TARJETAS con foto grande, nombre, categoría, estado y acciones
+ *    agrupadas y fáciles de pulsar (antes era una tabla comprimida).
+ *  - En escritorio: tabla clara y cómoda.
+ *  - Buscador y filtro por estado, porque con muchos productos era imposible
+ *    encontrar nada.
+ */
+
+interface ProductRow {
+  id: string;
+  name: string;
+  internal_code: string | null;
+  category: string | null;
+  status: string | null;
+  image_url: string | null;
+  tags: string[] | null;
+  sizes: string[] | null;
+  color_name: string | null;
+}
+
+const STATUS_META: Record<string, { bg: string; text: string; dot: string }> = {
+  Disponible: { bg: 'bg-[#eef7ee]', text: 'text-[#2e7d32]', dot: 'bg-[#2e7d32]' },
+  Oculto: { bg: 'bg-[#f4f2f0]', text: 'text-[#6b6b6b]', dot: 'bg-[#9e9e9e]' },
+  Agotado: { bg: 'bg-[#fdf3f3]', text: 'text-[#c62828]', dot: 'bg-[#c62828]' },
+  Próximamente: { bg: 'bg-[#fff8e1]', text: 'text-[#8a5a00]', dot: 'bg-[#f57f17]' },
+};
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
-  /* Fase 11: si falla la consulta se avisa, en vez de mostrar una lista vacía
-     como si no hubiera productos. */
   const [loadError, setLoadError] = useState(false);
-  /* Fase 17: modal de resultado para las acciones (borrar, cambiar estado). */
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('Todos');
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<ProductRow | null>(null);
   const [dialog, setDialog] = useState<{
     variant: 'success' | 'error';
     title: string;
     body: string;
   } | null>(null);
-  
-  // Modal states
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<any>(null);
-  const [deleteCountdown, setDeleteCountdown] = useState(3);
 
   const fetchProducts = async (showSpinner = true) => {
-    /* Fase 11: `loading` ya arranca en `true`, así que en el primer render no
-       hace falta volver a activarlo. Evita el setState síncrono dentro del
-       efecto que React desaconseja (provoca renders en cascada). */
     if (showSpinner) setLoading(true);
+
     const { data, error } = await supabase
       .from('products')
-      .select('*')
-      .order('order_index', { ascending: true })
+      .select('id, name, internal_code, category, status, image_url, tags, sizes, color_name')
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error cargando productos:', error);
       setLoadError(true);
     } else if (data) {
-      setProducts(data);
+      setProducts(data as ProductRow[]);
+      setLoadError(false);
     }
     setLoading(false);
   };
 
-  /* Fase 11: efecto después de la función que usa (evita el error de acceso
-     antes de la declaración). */
   useEffect(() => {
     fetchProducts(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleReorder = async (newOrder: any[]) => {
-    setProducts(newOrder);
-    
-    // Optimistic UI update, then save to db
-    const updates = newOrder.map((product, index) => ({
-      id: product.id,
-      order_index: index,
-    }));
+  /* Filtro aplicado: búsqueda por nombre/código/categoría + estado. */
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return products.filter((p) => {
+      const matchesStatus = statusFilter === 'Todos' || (p.status || 'Disponible') === statusFilter;
+      if (!matchesStatus) return false;
+      if (!q) return true;
+      return (
+        p.name?.toLowerCase().includes(q) ||
+        p.internal_code?.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q)
+      );
+    });
+  }, [products, search, statusFilter]);
 
-    // Perform mass update
-    const { error } = await supabase
-      .from('products')
-      .upsert(updates);
+  const counts = useMemo(() => {
+    const activos = products.filter((p) => (p.status || 'Disponible') === 'Disponible').length;
+    return { total: products.length, activos, inactivos: products.length - activos };
+  }, [products]);
 
-    if (error) {
-      console.error('Error updating order:', error);
-    }
-  };
+  const toggleStatus = async (p: ProductRow) => {
+    const current = p.status || 'Disponible';
+    const next = current === 'Disponible' ? 'Oculto' : 'Disponible';
 
-  useEffect(() => {
-    let timer: any;
-    if (deleteModalOpen && deleteCountdown > 0) {
-      timer = setTimeout(() => setDeleteCountdown(deleteCountdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [deleteModalOpen, deleteCountdown]);
-
-  const toggleStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'Disponible' ? 'Oculto' : 'Disponible';
-    // Optimista: se pinta el cambio y se revierte si la escritura falla.
+    // Optimista + reversión si falla.
     const previous = products;
-    setProducts(products.map(p => p.id === id ? { ...p, status: newStatus } : p));
+    setProducts(products.map((x) => (x.id === p.id ? { ...x, status: next } : x)));
 
-    const { error } = await supabase.from('products').update({ status: newStatus }).eq('id', id);
+    const { error } = await supabase.from('products').update({ status: next }).eq('id', p.id);
 
     if (error) {
       console.error('Error al cambiar el estado:', error);
-      setProducts(previous); // Revertir: no mostrar un estado que no se guardó.
-      setDialog({ variant: 'error', title: 'No se pudo cambiar el estado', body: 'Revisa tu conexión e inténtalo de nuevo.' });
+      setProducts(previous);
+      setDialog({
+        variant: 'error',
+        title: 'No se pudo cambiar el estado',
+        body: 'Revisa tu conexión e inténtalo de nuevo.',
+      });
       return;
     }
 
-    // Fase 7 (11.7): el catálogo público debe reflejar el cambio ya mismo.
-    await revalidateCatalog();
-  };
+    logActivity({
+      action: 'status',
+      entity: 'product',
+      entityName: p.name,
+      detail: next,
+    });
 
-  const confirmDeleteProduct = (product: any) => {
-    setProductToDelete(product);
-    setDeleteCountdown(3);
-    setDeleteModalOpen(true);
+    await revalidateCatalog();
   };
 
   const executeDelete = async () => {
     if (!productToDelete) return;
 
-    const nombre = productToDelete.name;
+    const target = productToDelete;
     const previous = products;
-    setProducts(products.filter(p => p.id !== productToDelete.id));
+    setProducts(products.filter((p) => p.id !== target.id));
     setDeleteModalOpen(false);
     setProductToDelete(null);
 
-    /* Fase 16: antes no se comprobaba el error; si fallaba, el producto
-       desaparecía de la lista pero seguía existiendo en la base. */
-    const { error } = await supabase.from('products').delete().eq('id', productToDelete.id);
+    const { error } = await supabase.from('products').delete().eq('id', target.id);
 
     if (error) {
       console.error('Error al eliminar el producto:', error);
       setProducts(previous);
-      setDialog({ variant: 'error', title: 'No se pudo eliminar', body: 'El producto sigue en el catálogo. Revisa tu conexión e inténtalo de nuevo.' });
+      setDialog({
+        variant: 'error',
+        title: 'No se pudo eliminar',
+        body: 'El producto sigue en el catálogo. Revisa tu conexión e inténtalo de nuevo.',
+      });
       return;
     }
 
+    logActivity({ action: 'delete', entity: 'product', entityName: target.name });
     await revalidateCatalog();
 
-    // Fase 17: confirmación en modal cerrable.
     setDialog({
       variant: 'success',
       title: 'Producto eliminado',
-      body: `«${nombre}» ya no aparece en el catálogo.`,
+      body: `«${target.name}» ya no aparece en el catálogo.`,
     });
   };
 
-  const statusColors: any = {
-    'Disponible': 'bg-[#e8f5e9] text-[#2e7d32]',
-    'Agotado': 'bg-[#ffebee] text-[#c62828]',
-    'Próximamente': 'bg-[#fff8e1] text-[#f57f17]',
-    'Oculto': 'bg-[#f4f2f0] text-[#888]',
-  };
-
   return (
-    <main className="flex-1 p-4 md:p-8 w-full max-w-7xl self-start flex flex-col gap-6 pb-[100px] md:pb-8">
-      
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
-        <div>
-          <h2 className="text-[28px] md:text-[34px] font-semibold tracking-tight text-[#1a1a1a] leading-tight">
-            Gestión de Productos
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 p-4 pb-[100px] md:gap-6 md:p-8 md:pb-8">
+      {/* Cabecera */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-[24px] font-semibold leading-tight tracking-tight text-[#1a1a1a] md:text-[30px]">
+            Productos
           </h2>
-          <p className="text-[#888] text-sm font-normal mt-1">
-            Visualiza, organiza y administra el catálogo completo.
+          <p className="mt-1 text-[13px] text-[#6b6b6b] md:text-sm">
+            {counts.total} en total · <span className="text-[#2e7d32]">{counts.activos} activos</span>
+            {counts.inactivos > 0 && (
+              <> · <span className="text-[#8a5a00]">{counts.inactivos} ocultos</span></>
+            )}
           </p>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          <Link href="/admin/products/new" className="flex-1 md:flex-none bg-[#1a1a1a] text-white font-semibold text-sm px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#333] transition-colors shadow-[0_4px_16px_rgba(0,0,0,0.08)] active:scale-95">
-            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>add</span>
-            Crear Producto
-          </Link>
-        </div>
+
+        <Link
+          href="/admin/products/new"
+          className="flex items-center justify-center gap-2 rounded-xl bg-[#1a1a1a] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#333] active:scale-95"
+        >
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>
+            add
+          </span>
+          Nuevo producto
+        </Link>
       </div>
 
-      {/* Filters/Search (Placeholder) */}
-      <div className="bg-white p-2 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 flex items-center gap-3">
-        <span className="material-symbols-outlined text-[#aaa] pl-3" style={{ fontVariationSettings: "'wght' 300" }}>search</span>
-        <input 
-          type="text" 
-          placeholder="Buscar productos..." 
-          className="flex-1 bg-transparent border-none outline-none text-sm text-[#1a1a1a] py-2 placeholder:text-[#bbb]"
-        />
-        <button className="px-4 py-2 text-sm font-semibold text-[#555] bg-[#f4f2f0] rounded-xl hover:bg-[#eceae6] transition-colors">
-          Filtros
-        </button>
-      </div>
-
-      {/* Products List (Drag and Drop) */}
-      <div className="bg-white rounded-3xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 overflow-hidden">
-        
-        {/* Table Header */}
-        <div className="hidden md:grid grid-cols-[auto_3fr_1.5fr_1fr_1.5fr_1fr] gap-4 p-5 border-b border-[#ece9e2] bg-[#fcfcfb] text-[11px] font-semibold text-[#aaa] uppercase tracking-wider">
-          <div className="w-8"></div>
-          <div>Producto</div>
-          <div>Categoría</div>
-          <div>Estado</div>
-          <div>Etiquetas</div>
-          <div className="text-right">Acciones</div>
+      {/* Buscador y filtros */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-[#aaa]">
+            search
+          </span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, código o categoría…"
+            className="w-full rounded-xl border border-[#ece9e2] bg-white py-2.5 pl-10 pr-3 text-sm text-[#1a1a1a] outline-none transition-colors focus:border-[#1a1a1a]"
+          />
         </div>
 
-        {/* Table Body (Reorderable) */}
-        {loading ? (
-          /* Fase 13: filas de esqueleto en vez de "Cargando productos...". */
-          <div aria-hidden="true">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-1 md:grid-cols-[auto_3fr_1.5fr_1fr_1.5fr_1fr] gap-4 p-4 md:p-5 items-center border-b border-[#ece9e2] last:border-none"
+        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          {['Todos', 'Disponible', 'Oculto'].map((s) => {
+            const active = statusFilter === s;
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                aria-pressed={active}
+                className={`shrink-0 rounded-full px-3.5 py-2 text-[12px] font-semibold transition-colors ${
+                  active ? 'bg-[#1a1a1a] text-white' : 'bg-white text-[#555] hover:bg-[#f4f2f0]'
+                }`}
               >
-                <div className="hidden md:block h-5 w-5 rounded skeleton-shimmer" />
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-xl skeleton-shimmer shrink-0" />
-                  <div className="flex-1">
-                    <div className="h-3.5 w-2/3 rounded skeleton-shimmer mb-2" />
-                    <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
-                  </div>
-                </div>
-                <div className="hidden md:block h-6 w-20 rounded-lg skeleton-shimmer" />
-                <div className="hidden md:block h-4 w-16 rounded skeleton-shimmer" />
-                <div className="hidden md:block h-6 w-24 rounded-lg skeleton-shimmer" />
-                <div className="hidden md:flex gap-2 justify-end">
-                  <div className="h-8 w-8 rounded-full skeleton-shimmer" />
-                  <div className="h-8 w-8 rounded-full skeleton-shimmer" />
-                  <div className="h-8 w-8 rounded-full skeleton-shimmer" />
-                </div>
+                {s}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Estado de carga */}
+      {loading ? (
+        <div aria-hidden="true" className="flex flex-col gap-2.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-2xl bg-white p-3">
+              <div className="size-14 shrink-0 rounded-xl skeleton-shimmer" />
+              <div className="flex-1">
+                <div className="mb-2 h-3.5 w-2/3 rounded skeleton-shimmer" />
+                <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
               </div>
-            ))}
-          </div>
-        ) : loadError ? (
-          <div className="p-10 text-center flex flex-col items-center">
-            <span className="material-symbols-outlined text-[#ddd] text-[32px] mb-3">wifi_off</span>
-            <p className="text-[#555] font-medium mb-3">No pudimos cargar los productos.</p>
-            <button
-              onClick={() => { setLoadError(false); fetchProducts(); }}
-              className="bg-[#1a1a1a] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#333] transition-colors"
-            >
-              Reintentar
-            </button>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="p-10 text-center flex flex-col items-center">
-            <div className="w-16 h-16 bg-[#f4f2f0] rounded-full flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[#aaa] text-[32px]" style={{ fontVariationSettings: "'wght' 300" }}>inventory_2</span>
             </div>
-            <p className="text-[#555] font-medium">No hay productos en tu catálogo.</p>
-            <Link href="/admin/products/new" className="text-[#1a1a1a] text-sm font-semibold mt-2 hover:underline">Crear tu primer producto</Link>
-          </div>
-        ) : (
-          <ReorderGroup values={products} onReorder={handleReorder} className="flex flex-col">
+          ))}
+        </div>
+      ) : loadError ? (
+        <div className="flex flex-col items-center rounded-2xl border border-black/5 bg-white py-14 text-center">
+          <span className="material-symbols-outlined mb-2 text-[32px] text-[#ddd]">wifi_off</span>
+          <p className="mb-3 text-sm font-medium text-[#555]">No pudimos cargar los productos.</p>
+          <button
+            onClick={() => { setLoadError(false); fetchProducts(); }}
+            className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#333]"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="flex flex-col items-center rounded-2xl border border-black/5 bg-white py-14 text-center">
+          <span className="material-symbols-outlined mb-2 text-[32px] text-[#ddd]">inventory_2</span>
+          <p className="mb-1 text-sm font-medium text-[#555]">
+            {products.length === 0 ? 'Aún no hay productos' : 'Ningún producto coincide'}
+          </p>
+          <p className="mb-4 max-w-[260px] text-[12px] leading-relaxed text-[#999]">
+            {products.length === 0
+              ? 'Crea el primero para que aparezca en el catálogo.'
+              : 'Prueba con otra búsqueda o cambia el filtro de estado.'}
+          </p>
+          {products.length === 0 && (
+            <Link
+              href="/admin/products/new"
+              className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#333]"
+            >
+              Crear producto
+            </Link>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* ── MÓVIL: tarjetas ─────────────────────────────────────────── */}
+          <div className="flex flex-col gap-2.5 md:hidden">
+            {visible.map((p) => {
+              const meta = STATUS_META[p.status || 'Disponible'] || STATUS_META.Disponible;
+              const activo = (p.status || 'Disponible') === 'Disponible';
 
-              {products.map((product) => (
-                <ReorderItem 
-                  key={product.id} 
-                  value={product}
-                  className="group grid grid-cols-1 md:grid-cols-[auto_3fr_1.5fr_1fr_1.5fr_1fr] gap-4 p-4 md:p-5 items-center border-b border-[#ece9e2] last:border-none bg-white hover:bg-[#fcfcfb] transition-colors cursor-grab active:cursor-grabbing"
+              return (
+                <article
+                  key={p.id}
+                  className="overflow-hidden rounded-2xl border border-black/5 bg-white"
                 >
-                  {/* Drag handle */}
-                  <div className="hidden md:flex items-center justify-center w-8 text-[#ccc] group-hover:text-[#888] transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">drag_indicator</span>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#f4f2f0] border border-black/5 flex-shrink-0 flex items-center justify-center">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                  <div className="flex gap-3 p-3">
+                    {/* Foto */}
+                    <Link
+                      href={`/admin/products/${p.id}`}
+                      className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-[#f4f2f0]"
+                    >
+                      {p.image_url ? (
+                        <Image
+                          src={p.image_url}
+                          alt={p.name}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                        />
                       ) : (
-                        <span className="material-symbols-outlined text-[#aaa]">image</span>
+                        <span className="flex size-full items-center justify-center">
+                          <span className="material-symbols-outlined text-[20px] text-[#ccc]">image</span>
+                        </span>
                       )}
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-sm text-[#1a1a1a]">{product.name}</h4>
-                      <div className="flex gap-2 items-center mt-0.5">
-                        <span className="text-[11px] text-[#aaa] uppercase tracking-wider">{product.internal_code || 'SIN SKU'}</span>
-                        <span className="text-[10px] text-[#ccc]">•</span>
-                        <span className="text-[11px] text-[#888]">{new Date(product.created_at).toLocaleDateString()}</span>
+                    </Link>
+
+                    {/* Datos */}
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/admin/products/${p.id}`} className="block">
+                        <h3 className="line-clamp-2 text-[14px] font-semibold leading-snug text-[#1a1a1a]">
+                          {p.name}
+                        </h3>
+                      </Link>
+
+                      <p className="mt-0.5 truncate text-[11px] text-[#6b6b6b]">
+                        {p.category || 'Sin categoría'}
+                        {p.color_name ? ` · ${p.color_name}` : ''}
+                      </p>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.bg} ${meta.text}`}
+                        >
+                          <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                          {p.status || 'Disponible'}
+                        </span>
+                        {p.sizes && p.sizes.length > 0 && (
+                          <span className="rounded-full bg-[#f4f2f0] px-2 py-0.5 text-[10px] font-medium text-[#6b6b6b]">
+                            {p.sizes.length} tallas
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Category */}
-                  <div className="hidden md:block">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#f4f2f0] text-xs font-medium text-[#555]">
-                      {product.category || 'Sin categoría'}
-                    </span>
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColors[product.status || 'Disponible'] || statusColors['Disponible']}`}>
-                      {product.status || 'Disponible'}
-                    </span>
-                  </div>
-
-                  {/* Tags */}
-                  <div className="hidden md:flex gap-1 flex-wrap">
-                    {product.tags && product.tags.length > 0 ? (
-                      product.tags.slice(0, 2).map((tag: string, idx: number) => (
-                        <span key={idx} className="px-2 py-0.5 border border-[#e0e0e0] rounded-md text-[10px] font-medium text-[#555] bg-white">
-                          {tag}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-[#bbb] italic">Sin etiquetas</span>
-                    )}
-                    {product.tags && product.tags.length > 2 && (
-                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium text-[#aaa] bg-[#f4f2f0]">
-                        +{product.tags.length - 2}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center md:justify-end gap-1 mt-4 md:mt-0">
-                    <Link href={`/admin/products/${product.id}`} className="w-8 h-8 flex items-center justify-center rounded-full text-[#aaa] hover:text-[#1a1a1a] hover:bg-[#f4f2f0] transition-all">
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>edit</span>
+                  {/* Acciones: botones grandes, uno por fila si hace falta */}
+                  <div className="flex items-stretch gap-1.5 border-t border-[#f0eeeb] bg-[#fcfcfb] p-2">
+                    <Link
+                      href={`/admin/products/${p.id}`}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white py-2.5 text-[12px] font-semibold text-[#1a1a1a] ring-1 ring-[#ece9e2] active:scale-[0.98]"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                      Editar
                     </Link>
-                    <button onClick={() => toggleStatus(product.id, product.status || 'Disponible')} className="w-8 h-8 flex items-center justify-center rounded-full text-[#aaa] hover:text-[#1a1a1a] hover:bg-[#f4f2f0] transition-all" title="Ocultar/Mostrar">
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>
-                        {(product.status === 'Oculto' || product.status === 'Agotado') ? 'visibility_off' : 'visibility'}
+
+                    <Link
+                      href={`/product?id=${p.id}`}
+                      target="_blank"
+                      aria-label={`Ver ${p.name} en la tienda`}
+                      className="flex items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2.5 text-[12px] font-semibold text-[#555] ring-1 ring-[#ece9e2] active:scale-[0.98]"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">visibility</span>
+                    </Link>
+
+                    <button
+                      onClick={() => toggleStatus(p)}
+                      aria-label={activo ? `Ocultar ${p.name}` : `Publicar ${p.name}`}
+                      aria-pressed={!activo}
+                      className={`flex items-center justify-center rounded-lg px-3 py-2.5 ring-1 active:scale-[0.98] ${
+                        activo
+                          ? 'bg-white text-[#8a5a00] ring-[#f0e0b8]'
+                          : 'bg-white text-[#2e7d32] ring-[#d6e9d6]'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        {activo ? 'visibility_off' : 'visibility'}
                       </span>
                     </button>
-                    <button onClick={() => confirmDeleteProduct(product)} className="w-8 h-8 flex items-center justify-center rounded-full text-[#aaa] hover:text-[#e57373] hover:bg-red-50 transition-all" title="Eliminar">
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>delete</span>
+
+                    <button
+                      onClick={() => { setProductToDelete(p); setDeleteModalOpen(true); }}
+                      aria-label={`Eliminar ${p.name}`}
+                      className="flex items-center justify-center rounded-lg bg-white px-3 py-2.5 text-[#c62828] ring-1 ring-[#f2d6d6] active:scale-[0.98]"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
                     </button>
                   </div>
+                </article>
+              );
+            })}
+          </div>
 
-                </ReorderItem>
-              ))}
+          {/* ── ESCRITORIO: tabla ───────────────────────────────────────── */}
+          <div className="hidden overflow-hidden rounded-2xl border border-black/5 bg-white md:block">
+            {/* Cabecera */}
+            <div className="grid grid-cols-[3fr_1.4fr_1fr_1fr_auto] items-center gap-4 border-b border-[#ece9e2] bg-[#fcfcfb] px-5 py-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#999]">Producto</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#999]">Categoría</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#999]">Estado</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#999]">Tallas</span>
+              <span className="w-[150px] text-right text-[10px] font-bold uppercase tracking-widest text-[#999]">
+                Acciones
+              </span>
+            </div>
 
-          </ReorderGroup>
-        )}
-      </div>
+            {visible.map((p) => {
+              const meta = STATUS_META[p.status || 'Disponible'] || STATUS_META.Disponible;
+              const activo = (p.status || 'Disponible') === 'Disponible';
 
-      {/* Fase 17: confirmación de borrado en modal unificado. */}
+              return (
+                <div
+                  key={p.id}
+                  className="grid grid-cols-[3fr_1.4fr_1fr_1fr_auto] items-center gap-4 border-b border-[#f2f0ed] px-5 py-3 last:border-none hover:bg-[#fcfcfb]"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-[#f4f2f0]">
+                      {p.image_url ? (
+                        <Image src={p.image_url} alt={p.name} fill sizes="44px" className="object-cover" />
+                      ) : (
+                        <span className="flex size-full items-center justify-center">
+                          <span className="material-symbols-outlined text-[16px] text-[#ccc]">image</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-semibold text-[#1a1a1a]">{p.name}</p>
+                      <p className="truncate text-[11px] text-[#999]">
+                        {p.internal_code || 'Sin código'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="truncate text-[12px] text-[#555]">{p.category || '—'}</span>
+
+                  <span
+                    className={`inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.bg} ${meta.text}`}
+                  >
+                    <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                    {p.status || 'Disponible'}
+                  </span>
+
+                  <span className="text-[12px] text-[#555]">
+                    {p.sizes?.length ? p.sizes.join(' · ') : '—'}
+                  </span>
+
+                  <div className="flex w-[150px] items-center justify-end gap-1">
+                    <Link
+                      href={`/product?id=${p.id}`}
+                      target="_blank"
+                      aria-label={`Ver ${p.name} en la tienda`}
+                      title="Ver en la tienda"
+                      className="flex size-8 items-center justify-center rounded-lg text-[#777] transition-colors hover:bg-[#f4f2f0] hover:text-[#1a1a1a]"
+                    >
+                      <span className="material-symbols-outlined text-[17px]">visibility</span>
+                    </Link>
+                    <button
+                      onClick={() => toggleStatus(p)}
+                      aria-label={activo ? `Ocultar ${p.name}` : `Publicar ${p.name}`}
+                      title={activo ? 'Ocultar' : 'Publicar'}
+                      className="flex size-8 items-center justify-center rounded-lg text-[#777] transition-colors hover:bg-[#f4f2f0] hover:text-[#1a1a1a]"
+                    >
+                      <span className="material-symbols-outlined text-[17px]">
+                        {activo ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
+                    <Link
+                      href={`/admin/products/${p.id}`}
+                      aria-label={`Editar ${p.name}`}
+                      title="Editar"
+                      className="flex size-8 items-center justify-center rounded-lg text-[#777] transition-colors hover:bg-[#f4f2f0] hover:text-[#1a1a1a]"
+                    >
+                      <span className="material-symbols-outlined text-[17px]">edit</span>
+                    </Link>
+                    <button
+                      onClick={() => { setProductToDelete(p); setDeleteModalOpen(true); }}
+                      aria-label={`Eliminar ${p.name}`}
+                      title="Eliminar"
+                      className="flex size-8 items-center justify-center rounded-lg text-[#c62828] transition-colors hover:bg-[#fdf3f3]"
+                    >
+                      <span className="material-symbols-outlined text-[17px]">delete</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Confirmación de borrado */}
       <AdminDialog
         open={deleteModalOpen && !!productToDelete}
         variant="confirm"
         title="Confirmar eliminación"
-        confirmLabel={deleteCountdown > 0 ? `Espera (${deleteCountdown})` : 'Eliminar'}
-        confirmDisabled={deleteCountdown > 0}
+        confirmLabel="Eliminar"
         cancelLabel="Cancelar"
         onConfirm={executeDelete}
-        onCancel={() => {
-          setDeleteModalOpen(false);
-          setProductToDelete(null);
-        }}
+        onCancel={() => { setDeleteModalOpen(false); setProductToDelete(null); }}
       >
-        ¿Seguro que quieres eliminar <strong>{productToDelete?.name}</strong>? Esta acción no
-        se puede deshacer.
+        ¿Seguro que quieres eliminar <strong>{productToDelete?.name}</strong>? Esta acción no se
+        puede deshacer.
       </AdminDialog>
 
-      {/* Fase 17: modal de resultado de las acciones. */}
+      {/* Resultado */}
       <AdminDialog
         open={!!dialog}
         variant={dialog?.variant ?? 'success'}
@@ -351,7 +498,6 @@ export default function AdminProductsPage() {
       >
         {dialog?.body}
       </AdminDialog>
-
     </main>
   );
 }

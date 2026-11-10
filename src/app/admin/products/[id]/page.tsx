@@ -9,6 +9,7 @@ import { validateImageFile } from '@/utils/imageUpload';
 import { uploadToImageKit } from '@/utils/imageUploadClient';
 import { revalidateCatalog } from '@/app/admin/actions';
 import AdminDialog from '@/components/admin/AdminDialog';
+import { logActivity } from '@/utils/activityLog';
 
 export default function ProductEditorPage() {
   const router = useRouter();
@@ -38,6 +39,8 @@ export default function ProductEditorPage() {
     /* Fase 19: imagen por color. Mapa hex -> URL, para que el modal cambie la
        foto al elegir un color. */
     color_images: {} as Record<string, string>,
+    /* Fase 33: variantes completas (hex + nombre + foto). */
+    color_variants: [] as { hex: string; name: string; image: string }[],
     tags: [] as string[],
     gallery: [] as string[],
     image_url: '', // Main image, usually gallery[0]
@@ -51,6 +54,8 @@ export default function ProductEditorPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [newColorHex, setNewColorHex] = useState('#000000');
+  /* Fase 33: nombre que el dueño asigna al tono («Rojo vino»). */
+  const [newColorName, setNewColorName] = useState('');
   const [newTag, setNewTag] = useState('');
 
   const fetchAllProducts = async () => {
@@ -77,6 +82,7 @@ export default function ProductEditorPage() {
         color_name: data.color_name || '',
         color_hex_codes: data.color_hex_codes || [],
         color_images: (data.color_images as Record<string, string>) || {},
+        color_variants: (data.color_variants as { hex: string; name: string; image: string }[]) || [],
         tags: data.tags || [],
         gallery: data.gallery || (data.image_url ? [data.image_url] : []),
         image_url: data.image_url || '',
@@ -110,28 +116,59 @@ export default function ProductEditorPage() {
     handleChange('sizes', newSizes);
   };
 
-  const addColor = () => {
-    if (!formData.color_hex_codes.includes(newColorHex)) {
-      handleChange('color_hex_codes', [...formData.color_hex_codes, newColorHex]);
+  /* ── Fase 33: VARIANTES DE COLOR ──────────────────────────────────────
+     Flujo pedido por el dueño:
+       1. elegir el tono con el selector de color,
+       2. escribir el nombre («Rojo vino»),
+       3. añadir la foto de ESE color,
+       4. guardar la variante.
+
+     La fuente de verdad es color_variants: [{ hex, name, image }].
+     color_hex_codes y color_images se mantienen sincronizadas al guardar,
+     para no romper el código que aún las lee. */
+
+  const colorVariants = formData.color_variants;
+
+  /** Añade una variante nueva con el hex y el nombre introducidos. */
+  const addColorVariant = () => {
+    const hex = newColorHex.trim().toLowerCase();
+    const name = newColorName.trim();
+
+    if (!hex) {
+      setFormError('Elige un tono para la variante.');
+      return;
     }
+    if (!name) {
+      setFormError('Escribe un nombre para el color (por ejemplo «Rojo vino»).');
+      return;
+    }
+    if (colorVariants.some((v) => v.hex.toLowerCase() === hex)) {
+      setFormError('Ese tono ya está añadido. Elige otro o edita el existente.');
+      return;
+    }
+
+    handleChange('color_variants', [...colorVariants, { hex, name, image: '' }]);
+    setFormError(null);
+    setNewColorName('');
+    setNewColorHex('#000000');
   };
 
-  const removeColor = (hex: string) => {
-    handleChange('color_hex_codes', formData.color_hex_codes.filter(c => c !== hex));
-    /* Fase 19: al quitar un color se borra también su imagen, para no dejar
-       entradas huérfanas en el mapa. */
-    const next = { ...formData.color_images };
-    delete next[hex];
-    handleChange('color_images', next);
+  /** Quita una variante completa (nombre + hex + foto). */
+  const removeColorVariant = (hex: string) => {
+    handleChange('color_variants', colorVariants.filter((v) => v.hex !== hex));
   };
 
-  /**
-   * Fase 19 — sube la foto asociada a un color concreto.
-   * Mismo flujo que la galería (ImageKit), pero guarda la URL en
-   * `color_images[hex]` en vez de en el array de la galería.
-   */
+  /** Cambia el nombre de una variante ya creada. */
+  const renameColorVariant = (hex: string, name: string) => {
+    handleChange(
+      'color_variants',
+      colorVariants.map((v) => (v.hex === hex ? { ...v, name } : v))
+    );
+  };
+
   const [uploadingColorHex, setUploadingColorHex] = useState<string | null>(null);
 
+  /** Sube (o reemplaza) la foto de una variante concreta. */
   const uploadColorImage = async (hex: string, file: File) => {
     const validationError = validateImageFile(file);
     if (validationError) {
@@ -144,12 +181,15 @@ export default function ProductEditorPage() {
 
     try {
       const url = await uploadToImageKit(file);
-      handleChange('color_images', { ...formData.color_images, [hex]: url });
+      handleChange(
+        'color_variants',
+        colorVariants.map((v) => (v.hex === hex ? { ...v, image: url } : v))
+      );
     } catch (err) {
       console.error('Error al subir la imagen del color:', err);
       setFormError(
         err instanceof Error
-          ? `No se pudo subir la imagen: ${err.message}`
+          ? 'No se pudo subir la imagen: ' + err.message
           : 'No se pudo subir la imagen del color.'
       );
     } finally {
@@ -158,9 +198,10 @@ export default function ProductEditorPage() {
   };
 
   const removeColorImage = (hex: string) => {
-    const next = { ...formData.color_images };
-    delete next[hex];
-    handleChange('color_images', next);
+    handleChange(
+      'color_variants',
+      colorVariants.map((v) => (v.hex === hex ? { ...v, image: '' } : v))
+    );
   };
 
   const toggleTag = (tag: string) => {
@@ -252,14 +293,43 @@ export default function ProductEditorPage() {
       setSaving(false);
       return;
     }
-    if (!formData.color_name || !formData.color_name.trim()) {
-      setFormError('El nombre del color es obligatorio.');
+
+    /* Fase 33: si hay variantes, `color_name` puede derivarse de ellas.
+       Se sigue exigiendo un nombre de color para cumplir el NOT NULL de la
+       base, pero se toma de la primera variante si el campo está vacío. */
+    const nombreColor = formData.color_name?.trim() || colorVariants[0]?.name || '';
+    if (!nombreColor) {
+      setFormError('Indica el color (o añade al menos una variante de color).');
       setSaving(false);
       return;
     }
 
+    /* Fase 33: se sincronizan las tres representaciones del color para no
+       romper nada que aún lea las columnas antiguas:
+         - color_variants: fuente completa (hex + nombre + foto)
+         - color_hex_codes: array de hex (lo usa la tarjeta y el modal)
+         - color_images: mapa hex -> url (lo usa el modal para cambiar la foto)
+       Además `color_name` pasa a ser la lista de nombres legible
+       («Rojo vino, Negro, Blanco»). */
+    const variantesLimpias = colorVariants
+      .filter((v) => v.hex && v.name.trim())
+      .map((v) => ({ hex: v.hex, name: v.name.trim(), image: v.image || '' }));
+
+    const hexCodes = variantesLimpias.length > 0
+      ? variantesLimpias.map((v) => v.hex)
+      : formData.color_hex_codes;
+
+    const colorImages: Record<string, string> = {};
+    for (const v of variantesLimpias) {
+      if (v.image) colorImages[v.hex] = v.image;
+    }
+
     const payload = {
       ...formData,
+      color_name: nombreColor,
+      color_variants: variantesLimpias,
+      color_hex_codes: hexCodes,
+      color_images: colorImages,
       image_url: formData.gallery.length > 0 ? formData.gallery[0] : null,
     };
 
@@ -284,6 +354,14 @@ export default function ProductEditorPage() {
     // El catálogo público debe reflejar el cambio ya mismo.
     await revalidateCatalog();
 
+    // Fase 33: registrar la acción para «Actividad reciente» del dashboard.
+    logActivity({
+      action: isNew ? 'create' : 'update',
+      entity: 'product',
+      entityName: formData.name,
+      detail: isNew ? 'Producto nuevo' : 'Cambios guardados',
+    });
+
     setSaving(false);
 
     // Fase 17: el modal informa del resultado sin salir de la pestaña.
@@ -306,21 +384,40 @@ export default function ProductEditorPage() {
   return (
     <main className="flex-1 p-4 md:p-8 w-full max-w-4xl mx-auto flex flex-col gap-6 pb-[100px] md:pb-8">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 bg-white/50 backdrop-blur-md p-4 rounded-3xl sticky top-[80px] z-30 shadow-sm border border-black/5">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/products" className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-[#ece9e2] text-[#555] hover:text-[#1a1a1a] transition-all">
+      {/* Header del editor (Fase 33).
+          ANTES: `sticky top-[80px] z-30` con fondo semitransparente. Tenía dos
+          problemas:
+            1. El header del shell mide 56px en móvil y 64px en escritorio, así
+               que `top-[80px]` dejaba una franja muerta y, al hacer scroll, esta
+               tarjeta flotaba SOBRE los campos y los tapaba.
+            2. El `backdrop-blur` con z-30 se superponía al contenido del
+               formulario que tiene campos con foco y desplegables.
+          AHORA: no es sticky. Se queda arriba del formulario y se desplaza con
+          la página, así nunca tapa nada. Las acciones principales están también
+          duplicadas al final del formulario para no tener que subir. */}
+      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-[#ece9e2] bg-white p-4 md:flex-row md:items-center md:p-5">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/products"
+            aria-label="Volver a productos"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#ece9e2] bg-white text-[#555] transition-colors hover:text-[#1a1a1a]"
+          >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'wght' 300" }}>arrow_back</span>
           </Link>
-          <div>
-            <h2 className="text-[20px] font-semibold tracking-tight text-[#1a1a1a]">
+          <div className="min-w-0">
+            <h2 className="truncate text-[18px] font-semibold tracking-tight text-[#1a1a1a] md:text-[20px]">
               {isNew ? 'Nuevo Producto' : 'Editar Producto'}
             </h2>
-            <span className="text-[11px] text-[#aaa] uppercase tracking-wider">{formData.internal_code || 'Borrador'}</span>
+            <span className="text-[11px] uppercase tracking-wider text-[#aaa]">
+              {formData.internal_code || 'Borrador'}
+            </span>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Link href="/admin/products" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[#555] hover:bg-white transition-colors">
+        <div className="flex gap-2">
+          <Link
+            href="/admin/products"
+            className="flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-[#555] transition-colors hover:bg-[#f4f2f0] md:flex-none"
+          >
             Cancelar
           </Link>
           <button 
@@ -532,21 +629,61 @@ export default function ProductEditorPage() {
               </label>
             </div>
             
-            <ReorderGroup axis="x" values={formData.gallery} onReorder={(val) => handleChange('gallery', val)} className="flex flex-wrap gap-3 pb-2">
+            {/* Galería (Fase 33).
+                BUG CORREGIDO: cada tarjeta usaba `key={url}` y `value={url}`.
+                La URL como key es frágil: si dos fotos comparten la misma URL
+                (pasa al reemplazar una imagen por otra que ya estaba, o al
+                duplicar), React colapsa ambas tarjetas y la imagen «desaparece»
+                del contenedor al seleccionarla.
+                Ahora se usa la POSICIÓN como identidad, que es estable y única.
+                El reordenar actualiza el array, así que la posición se
+                recalcula con él. */}
+            <ReorderGroup
+              axis="x"
+              values={formData.gallery.map((url, i) => ({ url, i }))}
+              onReorder={(next) => handleChange('gallery', next.map((x) => x.url))}
+              className="flex flex-wrap gap-3 pb-2"
+            >
               {formData.gallery.map((url, i) => (
-                <ReorderItem key={url} value={url} className="w-28 h-28 flex-shrink-0 bg-[#f4f2f0] rounded-2xl overflow-hidden relative group cursor-grab active:cursor-grabbing border border-black/5">
-                  <img src={url} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
-                    <span className="material-symbols-outlined text-white text-[20px]">drag_indicator</span>
-                    <button 
-                      onClick={() => handleChange('gallery', formData.gallery.filter(u => u !== url))}
-                      className="w-7 h-7 flex items-center justify-center bg-red-500/80 rounded-full text-white hover:bg-red-500 transition-colors"
+                <ReorderItem
+                  key={`${i}-${url}`}
+                  value={{ url, i }}
+                  className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-black/5 bg-[#f4f2f0] sm:h-28 sm:w-28"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Foto ${i + 1}`} className="size-full object-cover" />
+
+                  {/* Acciones: borrar y marcar como principal */}
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 backdrop-blur-[2px] transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => handleChange('gallery', formData.gallery.filter((_, idx) => idx !== i))}
+                      aria-label={`Eliminar foto ${i + 1}`}
+                      className="flex size-8 items-center justify-center rounded-full bg-[#c62828] text-white transition-colors hover:bg-[#a01f1f]"
                     >
                       <span className="material-symbols-outlined text-[16px]">close</span>
                     </button>
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Mover al principio = marcar como principal.
+                          const next = [...formData.gallery];
+                          const [moved] = next.splice(i, 1);
+                          next.unshift(moved);
+                          handleChange('gallery', next);
+                        }}
+                        aria-label={`Usar foto ${i + 1} como principal`}
+                        title="Usar como principal"
+                        className="flex size-8 items-center justify-center rounded-full bg-white text-[#1a1a1a] transition-colors hover:bg-[#f0eeeb]"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                      </button>
+                    )}
                   </div>
+
                   {i === 0 && (
-                    <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-md px-2 py-0.5 rounded-md text-[9px] font-bold tracking-widest uppercase shadow-sm">
+                    <div className="absolute left-1.5 top-1.5 rounded-md bg-white/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest shadow-sm">
                       Principal
                     </div>
                   )}
@@ -599,62 +736,54 @@ export default function ProductEditorPage() {
                 </div>
               </div>
 
-              {/* Colors */}
+              {/* ── Fase 33: VARIANTES DE COLOR ──────────────────────────
+                   Cada variante tiene TONO + NOMBRE + FOTO propia.
+                   En la tienda, al elegir «Rojo vino» se verá la foto de ese
+                   color (no solo cambia el circulito). */}
               <div>
-                <label className="block text-[11px] font-semibold text-[#aaa] uppercase tracking-wider mb-3">Colores y Familia</label>
-                <input 
-                  type="text" 
-                  value={formData.color_name} 
-                  onChange={e => handleChange('color_name', e.target.value)}
-                  className="w-full bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-4 py-3 text-sm text-[#1a1a1a] transition-all focus:bg-white mb-3"
-                  placeholder="Ej. Blanco Nieve o Pack Mixto"
-                />
-                
-                {/* Fase 19: cada color puede llevar su propia foto.
-                    Al pulsar el circulito de imagen se sube la foto de ese
-                    color; en el modal del cliente, tocar el color cambia la
-                    foto principal. */}
-                <div className="mb-4">
-                  <p className="mb-2 text-[11px] text-[#aaa]">
-                    Opcional: añade una foto por color. En el catálogo, al tocar un color se verá su foto.
-                  </p>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[#aaa]">
+                  Variantes de color
+                </label>
+                <p className="mb-3 text-[11px] leading-relaxed text-[#999]">
+                  Añade un tono, ponle nombre y sube la foto de la prenda en ese color.
+                </p>
 
-                  <div className="flex flex-wrap gap-2">
-                    {formData.color_hex_codes.map((hex, i) => {
-                      const imageUrl = formData.color_images[hex];
-                      const isUploading = uploadingColorHex === hex;
-
+                {/* Lista de variantes ya creadas */}
+                {colorVariants.length > 0 && (
+                  <div className="mb-4 flex flex-col gap-2">
+                    {colorVariants.map((v) => {
+                      const isUploading = uploadingColorHex === v.hex;
                       return (
                         <div
-                          key={i}
-                          className="relative flex items-center gap-2 rounded-2xl border border-[#ece9e2] bg-white p-1.5 pr-2.5"
+                          key={v.hex}
+                          className="flex items-center gap-2.5 rounded-2xl border border-[#ece9e2] bg-white p-2.5"
                         >
-                          {/* Muestra de color */}
+                          {/* Tono */}
                           <span
-                            className="h-8 w-8 shrink-0 rounded-full border border-black/10 shadow-sm"
-                            style={{ background: hex }}
-                            title={hex}
+                            className="size-9 shrink-0 rounded-full border border-black/10 shadow-sm"
+                            style={{ background: v.hex }}
+                            title={v.hex}
                           />
 
-                          {/* Foto del color (o botón para añadirla) */}
-                          {imageUrl ? (
-                            <div className="relative">
-                              <div className="h-8 w-8 overflow-hidden rounded-lg border border-black/5 bg-[#f4f2f0]">
+                          {/* Foto de la variante */}
+                          {v.image ? (
+                            <div className="relative shrink-0">
+                              <div className="size-9 overflow-hidden rounded-lg border border-black/5 bg-[#f4f2f0]">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={imageUrl} alt={`Color ${hex}`} className="h-full w-full object-cover" />
+                                <img src={v.image} alt={`Color ${v.name}`} className="size-full object-cover" />
                               </div>
                               <button
                                 type="button"
-                                onClick={() => removeColorImage(hex)}
-                                aria-label={`Quitar la foto del color ${hex}`}
-                                className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-black text-white"
+                                onClick={() => removeColorImage(v.hex)}
+                                aria-label={`Quitar la foto de ${v.name}`}
+                                className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-black text-white"
                               >
                                 <span className="material-symbols-outlined text-[10px]">close</span>
                               </button>
                             </div>
                           ) : (
                             <label
-                              className={`flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-[#f4f2f0] px-2 text-[11px] font-medium text-[#666] transition-colors hover:bg-[#eceae6] ${
+                              className={`flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-[#f4f2f0] px-2 text-[11px] font-medium text-[#666] transition-colors hover:bg-[#eceae6] ${
                                 isUploading ? 'pointer-events-none opacity-60' : ''
                               }`}
                               title="Añadir foto de este color"
@@ -666,71 +795,106 @@ export default function ProductEditorPage() {
                                 disabled={isUploading}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
-                                  if (file) uploadColorImage(hex, file);
+                                  if (file) uploadColorImage(v.hex, file);
                                   e.target.value = '';
                                 }}
                               />
-                              <span className="material-symbols-outlined text-[14px]">
-                                {/* Se usa un spinner CSS en vez de un icono:
-                                    `progress_activity` no está en la fuente y
-                                    se vería como texto. */}
-                                {!isUploading && 'add_photo_alternate'}
-                              </span>
-                              {isUploading && (
-                                <span
-                                  className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[#bbb] border-t-[#555]"
-                                  aria-hidden="true"
-                                />
+                              {isUploading ? (
+                                <span className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-[#bbb] border-t-[#555]" />
+                              ) : (
+                                <span className="material-symbols-outlined text-[14px]">add_photo_alternate</span>
                               )}
                               {isUploading ? 'Subiendo' : 'Foto'}
                             </label>
                           )}
 
-                          {/* Quitar el color */}
+                          {/* Nombre editable */}
+                          <input
+                            type="text"
+                            value={v.name}
+                            onChange={(e) => renameColorVariant(v.hex, e.target.value)}
+                            placeholder="Nombre del color"
+                            className="min-w-0 flex-1 rounded-lg border border-transparent bg-[#f8f8f6] px-2.5 py-2 text-[13px] text-[#1a1a1a] outline-none transition-colors focus:border-black/10 focus:bg-white"
+                          />
+
+                          {/* Quitar variante */}
                           <button
                             type="button"
-                            onClick={() => removeColor(hex)}
-                            aria-label={`Quitar el color ${hex}`}
-                            className="flex h-6 w-6 items-center justify-center rounded-full text-[#bbb] transition-colors hover:bg-[#f4f2f0] hover:text-[#c62828]"
+                            onClick={() => removeColorVariant(v.hex)}
+                            aria-label={`Quitar ${v.name || v.hex}`}
+                            className="flex size-8 shrink-0 items-center justify-center rounded-full text-[#bbb] transition-colors hover:bg-[#fdf3f3] hover:text-[#c62828]"
                           >
-                            <span className="material-symbols-outlined text-[14px]">close</span>
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
                           </button>
                         </div>
                       );
                     })}
-
-                    {formData.color_hex_codes.length === 0 && (
-                      <p className="text-xs text-[#bbb]">Aún no has añadido colores.</p>
-                    )}
                   </div>
-                </div>
+                )}
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#ece9e2] pt-3">
-                    <div className="relative w-10 h-10 shrink-0 rounded-full border border-black/10 shadow-sm overflow-hidden group cursor-pointer">
-                      <div 
-                        className="absolute inset-0 pointer-events-none"
-                        style={{ backgroundColor: newColorHex }}
-                      />
-                      <input 
-                        type="color" 
-                        value={newColorHex} 
-                        onChange={e => setNewColorHex(e.target.value)}
-                        className="absolute inset-[-10px] w-16 h-16 border-none outline-none cursor-pointer opacity-0"
-                        title="Elegir color visualmente"
+                {colorVariants.length === 0 && (
+                  <p className="mb-3 rounded-xl bg-[#f8f8f6] px-3 py-2.5 text-[12px] text-[#999]">
+                    Aún no hay variantes. Añade la primera abajo.
+                  </p>
+                )}
+
+                {/* Formulario para añadir una variante: tono → nombre → añadir */}
+                <div className="rounded-2xl border border-dashed border-[#ddd8d0] bg-[#fcfcfb] p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Selector visual de color */}
+                    <div className="relative size-10 shrink-0 overflow-hidden rounded-full border border-black/10 shadow-sm">
+                      <div className="absolute inset-0" style={{ backgroundColor: newColorHex }} />
+                      <input
+                        type="color"
+                        value={newColorHex}
+                        onChange={(e) => setNewColorHex(e.target.value)}
+                        aria-label="Elegir tono"
+                        className="absolute inset-[-10px] size-16 cursor-pointer border-none opacity-0 outline-none"
+                        title="Elegir tono"
                       />
                     </div>
-                    <input 
-                      type="text" 
-                      value={newColorHex} 
-                      onChange={e => setNewColorHex(e.target.value)}
+
+                    {/* Hex manual */}
+                    <input
+                      type="text"
+                      value={newColorHex}
+                      onChange={(e) => setNewColorHex(e.target.value)}
                       maxLength={7}
-                      className="w-24 bg-[#f8f8f6] border border-transparent focus:border-black/10 outline-none rounded-xl px-3 py-2.5 text-sm text-[#1a1a1a] transition-all focus:bg-white font-mono uppercase"
+                      aria-label="Código hexadecimal"
+                      className="w-[92px] shrink-0 rounded-xl bg-white px-3 py-2.5 font-mono text-[13px] uppercase text-[#1a1a1a] outline-none ring-1 ring-[#ece9e2] transition-colors focus:ring-[#1a1a1a]"
                       placeholder="#000000"
                     />
-                    <button onClick={addColor} className="text-sm font-medium text-[#555] bg-[#f4f2f0] hover:bg-[#eceae6] px-3 py-2.5 rounded-xl transition-colors whitespace-nowrap">
-                      Añadir Color
+
+                    {/* Nombre */}
+                    <input
+                      type="text"
+                      value={newColorName}
+                      onChange={(e) => setNewColorName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addColorVariant();
+                        }
+                      }}
+                      placeholder="Nombre · ej. Rojo vino"
+                      aria-label="Nombre del color"
+                      className="min-w-[140px] flex-1 rounded-xl bg-white px-3 py-2.5 text-[13px] text-[#1a1a1a] outline-none ring-1 ring-[#ece9e2] transition-colors focus:ring-[#1a1a1a]"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={addColorVariant}
+                      className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#1a1a1a] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#333] active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                      Añadir
                     </button>
                   </div>
+
+                  <p className="mt-2 text-[10px] text-[#aaa]">
+                    Después de añadirla podrás subir la foto de ese color.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

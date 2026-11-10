@@ -17,6 +17,12 @@ export interface Product {
    * Permite que al elegir un color en el modal se muestre la foto de ese color.
    */
   color_images?: Record<string, string>;
+  /**
+   * Fase 33: variantes completas de color, con nombre propio.
+   * Es la fuente principal para la tienda; `color_hex_codes` y `color_images`
+   * se mantienen por compatibilidad.
+   */
+  color_variants?: { hex: string; name: string; image?: string }[];
   image_url: string | null;
   gallery?: string[];
   action_text: string;

@@ -232,13 +232,32 @@ function ModalContent({
     return images;
   }, [product.image_url, product.gallery]);
 
-  /* Fase 19: imagen del color seleccionado.
-     Si el producto tiene una foto para ese color, se muestra DELANTE de la
-     galería, así al tocar un color la foto cambia al instante sin salir del
-     carrusel ni perder las demás imágenes. */
-  const colorImages = (product.color_images || {}) as Record<string, string>;
-  const selectedHex = product.color_hex_codes?.[selectedColorIndex];
-  const selectedColorImage = selectedHex ? colorImages[selectedHex] : undefined;
+  /* Fase 33: variantes de color con nombre propio.
+     Si el producto tiene `color_variants` (hex + nombre + foto), esa es la
+     fuente principal: así se muestra «Rojo vino» en lugar de «#7b1113».
+     Se cae a `color_hex_codes` para productos antiguos sin variantes. */
+  const variants = React.useMemo(() => {
+    const fromVariants = (product.color_variants || [])
+      .filter((v) => v && v.hex)
+      .map((v) => ({ hex: v.hex, name: v.name || v.hex, image: v.image || '' }));
+
+    if (fromVariants.length > 0) return fromVariants;
+
+    // Compatibilidad: producto sin color_variants.
+    return (product.color_hex_codes || []).map((hex) => ({
+      hex,
+      name: (product.color_images || {})[hex] ? hex : (product.color_name || hex),
+      image: (product.color_images || {})[hex] || '',
+    }));
+  }, [product.color_variants, product.color_hex_codes, product.color_images, product.color_name]);
+
+  /* El índice seleccionado apunta a `variants`. */
+  const safeColorIndex = Math.min(selectedColorIndex, Math.max(variants.length - 1, 0));
+  const selectedVariant = variants[safeColorIndex];
+
+  /* Fase 19/33: imagen del color seleccionado. Se coloca DELANTE de la galería
+     para que al tocar un color la foto cambie al instante. */
+  const selectedColorImage = selectedVariant?.image || undefined;
 
   const galleryWithColor = React.useMemo(() => {
     if (!selectedColorImage) return allImages;
@@ -616,38 +635,46 @@ function ModalContent({
                 </div>
               )}
 
-              {/* Color selector */}
-              {product.color_hex_codes && product.color_hex_codes.length > 0 && (
+              {/* Selector de color (Fase 33).
+                  Usa `variants` (hex + nombre + foto). El nombre que se muestra
+                  es el que puso el dueño («Rojo vino»), no el hex. */}
+              {variants.length > 0 && (
                 <div className="mb-5">
-                  <span className="text-[11px] font-semibold text-[#aaa] dark:text-zinc-500 uppercase tracking-widest block mb-2.5">
-                    {/* Fase 7 (1.6): el nombre corresponde al color elegido. */}
-                    Color: <span className="font-normal normal-case text-[#888] dark:text-zinc-400 tracking-normal ml-1">{selectedColor?.label}</span>
+                  <span className="block text-[11px] font-semibold uppercase tracking-widest text-[#6b6b6b] dark:text-zinc-400 mb-2.5">
+                    Color:{' '}
+                    <span className="ml-1 font-normal normal-case tracking-normal text-[#1a1a1a] dark:text-zinc-200">
+                      {selectedVariant?.name || '—'}
+                    </span>
                   </span>
-                  <div className="flex gap-2.5">
-                    {product.color_hex_codes.map((hex, i) => {
-                      /* Fase 19: se marca con un punto qué colores tienen foto
-                         propia, para que el cliente sepa que al tocarlos la
-                         imagen cambia. */
-                      const hasOwnImage = Boolean(colorImages[hex]);
-                      const isActive = i === selectedColorIndex;
+                  <div className="flex flex-wrap gap-2.5">
+                    {variants.map((v, i) => {
+                      const hasOwnImage = Boolean(v.image);
+                      const isActive = i === safeColorIndex;
 
                       return (
                         <button
-                          key={i}
+                          key={`${v.hex}-${i}`}
+                          type="button"
                           onClick={() => setSelectedColorIndex(i)}
                           aria-label={
                             hasOwnImage
-                              ? `Color ${hex.toUpperCase()} (con foto propia)`
-                              : `Color ${hex.toUpperCase()}`
+                              ? `${v.name} (con foto propia)`
+                              : v.name
                           }
                           aria-pressed={isActive}
-                          className={`mm-tap relative w-11 h-11 rounded-full border transition-all ${isActive ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900' : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
-                            }`}
-                          style={{ background: hex }}
+                          title={v.name}
+                          className={`mm-tap relative size-11 rounded-full border transition-all ${
+                            isActive
+                              ? 'border-[#1a1a1a] dark:border-white ring-2 ring-[#1a1a1a]/20 dark:ring-white/20 ring-offset-1 dark:ring-offset-zinc-900'
+                              : 'border-[#e0e0e0] dark:border-zinc-700 hover:border-[#999] dark:hover:border-zinc-500'
+                          }`}
+                          style={{ background: v.hex }}
                         >
+                          {/* Punto que indica que este color tiene foto propia
+                              y que al tocarlo cambiará la imagen. */}
                           {hasOwnImage && (
                             <span
-                              className="absolute bottom-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-white shadow-sm"
+                              className="absolute bottom-0.5 right-0.5 flex size-3 items-center justify-center rounded-full bg-white shadow-sm"
                               aria-hidden="true"
                             >
                               <span className="material-symbols-outlined text-[9px] text-[#1a1a1a]">image</span>

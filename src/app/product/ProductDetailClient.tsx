@@ -61,6 +61,24 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     setInInquiry(getInquiryList().some((x) => x.id === product.id));
   }, [product.id]);
 
+  /* Fase 33: registrar la vista del producto para «Productos más vistos».
+     Se llama a la función SECURITY DEFINER (el visitante no puede escribir en
+     la tabla). Se evita contar dos veces la misma ficha en la misma sesión. */
+  useEffect(() => {
+    if (!product.id) return;
+    const key = `pv_prod:${product.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch {
+      // Sin sessionStorage se registra igualmente.
+    }
+    void supabase.rpc('log_product_view', { p_product_id: product.id }).then(
+      () => {},
+      () => {}
+    );
+  }, [product.id]);
+
   const toggleInquiry = () => {
     if (inInquiry) {
       removeFromInquiry(product.id);

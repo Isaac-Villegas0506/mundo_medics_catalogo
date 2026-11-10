@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ReorderGroup, ReorderItem } from '@/components/admin/Reorder';
 import { supabase } from '@/utils/supabase/client';
 import { revalidateCatalog } from '@/app/admin/actions';
 import AdminDialog from '@/components/admin/AdminDialog';
@@ -11,6 +10,9 @@ export default function AdminCategoriesPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  /* Fase 33: el orden se guarda con un boton explicito. */
+  const [orderDirty, setOrderDirty] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   /* Fase 17: modal de resultado, cerrable por el usuario. */
   const [resultDialog, setResultDialog] = useState<{
@@ -52,22 +54,72 @@ export default function AdminCategoriesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleReorder = async (newOrder: any[]) => {
-    if (searchTerm.trim()) return; // Prevenir reordenamiento durante la búsqueda
+  /* Fase 33 — guardar el orden de las categorías.
+     BUG CORREGIDO: se hacía `upsert([{ id, name, order_index }])`. Un upsert
+     con campos omitidos los pone a NULL, así que al reordenar se BORRABAN
+     `icon` y `featured_product_id` de todas las categorías.
+     Ahora se envía el objeto completo de cada categoría, y solo los campos que
+     existen en la tabla. Además se separa el estado optimista del guardado:
+
+       onReorder  -> solo actualiza la vista (arrastre fluido)
+       saveOrder  -> escribe en la base con un botón explícito
+
+     Esto también resuelve el «no puedo organizar correctamente»: antes cada
+     movimiento del arrastre disparaba una escritura y, si fallaba una, el
+     orden quedaba a medias. */
+  const handleReorder = (newOrder: any[]) => {
+    if (searchTerm.trim()) return; // No reordenar mientras se busca.
     setCategories(newOrder);
-    const updates = newOrder.map((cat, index) => ({
+    setOrderDirty(true);
+  };
+
+  /**
+   * Fase 33 — mueve una categoría una posición arriba (-1) o abajo (+1).
+   * Sustituye al arrastre: funciona igual con dedo y con ratón, sin
+   * conflictos con el scroll de la página.
+   */
+  const moveCategory = (index: number, direction: -1 | 1) => {
+    if (searchTerm.trim()) return; // No se puede reordenar filtrando.
+
+    const target = index + direction;
+    if (target < 0 || target >= categories.length) return;
+
+    const next = [...categories];
+    [next[index], next[target]] = [next[target], next[index]];
+    handleReorder(next);
+  };
+
+  const saveOrder = async () => {
+    setSavingOrder(true);
+    setFormError(null);
+
+    const updates = categories.map((cat, index) => ({
       id: cat.id,
       name: cat.name,
       order_index: index,
+      // Se conservan explícitamente para que el upsert no los anule.
+      icon: cat.icon ?? null,
+      featured_product_id: cat.featured_product_id ?? null,
     }));
+
     const { error } = await supabase.from('categories').upsert(updates);
+
     if (error) {
       console.error('Error al reordenar categorías:', error);
       setFormError('No se pudo guardar el orden. Vuelve a intentarlo.');
+      setSavingOrder(false);
       return;
     }
-    // Fase 7 (1.5): el orden de las categorías se ve en la portada pública.
+
+    // El orden se ve en la portada pública: hay que revalidarla.
     await revalidateCatalog();
+    setOrderDirty(false);
+    setSavingOrder(false);
+    setResultDialog({
+      variant: 'success',
+      title: 'Orden guardado',
+      body: 'El catálogo público ya muestra las categorías en este orden.',
+    });
   };
 
   const handleSave = async () => {
@@ -183,11 +235,18 @@ export default function AdminCategoriesPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
 
-        {/* Editor Form */}
-        <div className="w-full md:col-span-1 bg-white rounded-3xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 sticky top-[80px]">
-          <h3 className="font-semibold text-lg text-[#1a1a1a] mb-5">
+        {/* Editor del formulario (Fase 33).
+            ANTES: `sticky top-[80px]`. El header del panel mide 56px en móvil y
+            64px en escritorio, así que ese `top-[80px]` no coincidía: la tarjeta
+            se despegaba, dejaba una franja muerta y el contenedor con
+            `overflow-hidden` de al lado la tapaba al hacer scroll.
+            AHORA: en escritorio es sticky con el offset correcto (se pega justo
+            bajo el header) y en móvil es estático, para que el scroll sea
+            natural y nada se monte encima. */}
+        <div className="w-full rounded-3xl border border-black/5 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] md:col-span-1 md:sticky md:top-[72px] md:p-6 lg:top-[80px]">
+          <h3 className="mb-5 text-lg font-semibold text-[#1a1a1a]">
             {editingId ? 'Editar Categoría' : 'Nueva Categoría'}
           </h3>
 
@@ -305,21 +364,42 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
 
-        {/* Categories List */}
-        <div className="w-full md:col-span-2 bg-white rounded-3xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/5 overflow-hidden">
-          <div className="p-4 md:p-5 border-b border-[#ece9e2] bg-[#fcfcfb] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <span className="text-[11px] font-semibold text-[#aaa] uppercase tracking-wider min-w-0 truncate flex-1">
-              {searchTerm.trim() ? 'Resultados de búsqueda' : 'Tus Categorías (Arrastra para ordenar)'}
+        {/* Categories List (Fase 33).
+            Se quita `overflow-hidden` del contenedor: era lo que ocultaba los
+            desplegables y el contenido que sobresalía al hacer scroll, y hacía
+            que el recuadro de «Nueva categoría» quedara tapado. Cada zona
+            maneja su propio scroll donde de verdad hace falta. */}
+        <div className="w-full md:col-span-2 rounded-3xl border border-black/5 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+          <div className="flex flex-col justify-between gap-3 border-b border-[#ece9e2] bg-[#fcfcfb] p-4 md:flex-row md:items-center md:p-5">
+            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-wider text-[#6b6b6b]">
+              {searchTerm.trim()
+                ? 'Resultados de búsqueda'
+                : `Tus categorías · ${categories.length}`}
             </span>
-            <div className="relative w-full md:w-64 flex-shrink-0">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-[#aaa]">search</span>
-              <input 
-                type="text" 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Buscar categoría..." 
-                className="w-full bg-white border border-[#ece9e2] focus:border-black/10 outline-none rounded-xl pl-10 pr-4 py-2 text-sm text-[#1a1a1a] transition-all shadow-sm"
-              />
+
+            <div className="flex items-center gap-2">
+              {/* Guardar el orden: solo aparece si hay cambios pendientes. */}
+              {orderDirty && !searchTerm.trim() && (
+                <button
+                  onClick={saveOrder}
+                  disabled={savingOrder}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#1a1a1a] px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[#333] active:scale-95 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[15px]">save</span>
+                  {savingOrder ? 'Guardando…' : 'Guardar orden'}
+                </button>
+              )}
+
+              <div className="relative w-full md:w-56 md:shrink-0">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-[#aaa]">search</span>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar categoría..."
+                  className="w-full rounded-xl border border-[#ece9e2] bg-white py-2 pl-10 pr-4 text-sm text-[#1a1a1a] shadow-sm outline-none transition-all focus:border-black/10"
+                />
+              </div>
             </div>
           </div>
 
@@ -339,49 +419,97 @@ export default function AdminCategoriesPage() {
           ) : categories.length === 0 ? (
             <div className="p-10 text-center text-[#888]">No hay categorías. Crea una.</div>
           ) : (
-            <ReorderGroup values={searchTerm.trim() ? categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())) : categories} onReorder={handleReorder} className="flex flex-col">
-                {(searchTerm.trim() ? categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())) : categories).map((cat) => (
-                  <ReorderItem
+            /* Fase 33: se sustituye el arrastre por botones subir/bajar.
+               El arrastre en listas largas y en móvil era poco fiable (el dedo
+               desplazaba la página en vez de la fila) y el dueño no podía
+               organizar las categorías.
+               Los botones funcionan igual de bien con dedo y con ratón y el
+               resultado se guarda con «Guardar orden». */
+            <div className="flex flex-col">
+              {(searchTerm.trim()
+                ? categories.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                : categories
+              ).map((cat, idx, arr) => {
+                const prod = products.find((p) => p.id === cat.featured_product_id);
+                const puedeSubir = idx > 0 && !searchTerm.trim();
+                const puedeBajar = idx < arr.length - 1 && !searchTerm.trim();
+
+                return (
+                  <div
                     key={cat.id}
-                    value={cat}
-                    className={`group flex items-center justify-between p-4 border-b border-[#ece9e2] last:border-none bg-white hover:bg-[#fcfcfb] transition-colors ${!searchTerm.trim() ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className="flex items-center justify-between gap-2 border-b border-[#ece9e2] bg-white p-3 transition-colors last:border-none hover:bg-[#fcfcfb] md:p-4"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      {/* Orden + botones subir/bajar */}
                       {!searchTerm.trim() ? (
-                        <div className="flex items-center justify-center w-6 text-[#ccc] group-hover:text-[#888] transition-colors cursor-grab">
-                          <span className="material-symbols-outlined text-[20px]">drag_indicator</span>
+                        <div className="flex shrink-0 flex-col items-center gap-0.5">
+                          <button
+                            onClick={() => moveCategory(idx, -1)}
+                            disabled={!puedeSubir}
+                            aria-label={`Subir ${cat.name}`}
+                            className="flex size-6 items-center justify-center rounded text-[#bbb] transition-colors hover:bg-[#f4f2f0] hover:text-[#1a1a1a] disabled:opacity-25 disabled:hover:bg-transparent"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                          </button>
+                          <span className="text-[10px] font-bold tabular-nums text-[#ccc]">{idx + 1}</span>
+                          <button
+                            onClick={() => moveCategory(idx, 1)}
+                            disabled={!puedeBajar}
+                            aria-label={`Bajar ${cat.name}`}
+                            className="flex size-6 items-center justify-center rounded text-[#bbb] transition-colors hover:bg-[#f4f2f0] hover:text-[#1a1a1a] disabled:opacity-25 disabled:hover:bg-transparent"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                          </button>
                         </div>
                       ) : (
-                        <div className="w-6" />
+                        <div className="w-6 shrink-0" />
                       )}
-                      
-                      {(() => {
-                        const prod = products.find(p => p.id === cat.featured_product_id);
-                        return (
-                          <div className="w-10 h-12 rounded-lg bg-[#e8e8e4] overflow-hidden flex items-center justify-center border border-black/5">
-                            {prod?.image_url ? (
-                              <img src={prod.image_url} alt={cat.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="material-symbols-outlined text-[16px] text-[#aaa]">image</span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                      
-                      <span className="font-semibold text-sm text-[#1a1a1a]">{cat.name}</span>
+
+                      {/* Imagen destacada */}
+                      <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-black/5 bg-[#e8e8e4] md:size-11">
+                        {prod?.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={prod.image_url} alt={cat.name} className="size-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-[16px] text-[#aaa]">image</span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-semibold text-[#1a1a1a] md:text-sm">
+                          {cat.name}
+                        </p>
+                        <p className="truncate text-[11px] text-[#6b6b6b]">
+                          {prod ? prod.name : 'Sin producto destacado'}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity pr-2">
-                      <button onClick={() => startEdit(cat)} className="w-8 h-8 flex items-center justify-center rounded-full text-[#aaa] hover:text-[#1a1a1a] hover:bg-white shadow-sm transition-all">
-                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>edit</span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => startEdit(cat)}
+                        aria-label={`Editar ${cat.name}`}
+                        className="flex size-9 items-center justify-center rounded-full text-[#777] transition-colors hover:bg-[#f4f2f0] hover:text-[#1a1a1a]"
+                      >
+                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>
+                          edit
+                        </span>
                       </button>
-                      <button onClick={() => deleteCategory(cat.id)} className="w-8 h-8 flex items-center justify-center rounded-full text-[#aaa] hover:text-[#e57373] hover:bg-white shadow-sm transition-all">
-                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>delete</span>
+                      <button
+                        onClick={() => deleteCategory(cat.id)}
+                        aria-label={`Eliminar ${cat.name}`}
+                        className="flex size-9 items-center justify-center rounded-full text-[#c62828] transition-colors hover:bg-[#fdf3f3]"
+                      >
+                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'wght' 300" }}>
+                          delete
+                        </span>
                       </button>
                     </div>
-                  </ReorderItem>
-                ))}
-            </ReorderGroup>
+                  </div>
+                );
+              })}
+            </div>
+
           )}
         </div>
 

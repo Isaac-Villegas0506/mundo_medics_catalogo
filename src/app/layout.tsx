@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import PageViewTracker from "@/components/PageViewTracker";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -72,6 +73,10 @@ export default function RootLayout({
             con la regla @media correspondiente, sin JavaScript.
             El panel de administración sí lo conserva, pero cargado bajo demanda. */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          {/* Fase 33: registra las visitas de la tienda pública para el
+              dashboard del panel. Solo cuenta la ruta; no usa cookies ni
+              guarda datos personales. Se ignora en /admin y /api. */}
+          <PageViewTracker />
           {children}
         </ThemeProvider>
         {/* Fase 9 (4.5): Vercel Web Analytics.
